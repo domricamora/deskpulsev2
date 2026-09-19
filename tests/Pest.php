@@ -14,9 +14,14 @@ use Tests\TestCase;
 |
 */
 
-pest()->extend(TestCase::class)
- // ->use(RefreshDatabase::class)
-    ->in('Feature');
+pest()->extend(TestCase::class)->in('Feature');
+
+/*
+| RefreshDatabase is applied per test FILE rather than globally, because most
+| feature tests here assert configuration or rendering and need no database at
+| all — making them migrate would only slow the suite down. Add
+| `uses(RefreshDatabase::class);` at the top of any file that touches data.
+*/
 
 /*
 |--------------------------------------------------------------------------

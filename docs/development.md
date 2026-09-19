@@ -65,8 +65,12 @@ CREATE DATABASE deskpulse      CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE deskpulse_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-`deskpulse` is the live legacy schema. **No Laravel migrations exist yet** — they are
-generated from the live database in Phase 3, so nothing here alters it.
+`deskpulse` is the live legacy schema and already holds the tables, so there is nothing
+to migrate into it. To build the schema from scratch elsewhere:
+
+```bash
+php artisan migrate
+```
 
 For frontend work:
 
@@ -88,15 +92,62 @@ that do not reproduce the real schema.
 
 Tests use `deskpulse_test` and never touch `deskpulse`.
 
-> `RefreshDatabase` is currently commented out in `tests/Pest.php`, which is correct
-> while no migrations exist. **Enable it in Phase 3**, or feature tests will run
-> against leftover state.
+`RefreshDatabase` is applied **per test file**, not globally — most feature tests here
+assert configuration or rendering and need no database, so migrating for them would only
+slow the suite. Add `uses(RefreshDatabase::class);` at the top of any file that touches
+data.
 
 The legacy end-to-end harness must keep working unmodified — it is the Phase 7 gate:
 
 ```bash
 py tools/test_webhook.py http://localhost/deskpulsev2/server/public ava@demo.test Demo12345
 ```
+
+## Migrations
+
+The 37 migrations in `database/migrations/` were **generated from the live database**,
+not from `server/schema.sql` — that file covers only 30 of the 37 tables and is missing
+the whole payments ledger, password resets, OIDC identities and the promo tables.
+
+```bash
+php tools/generate_migrations.php   # regenerate from the live schema
+php tools/schema_diff.php           # prove a rebuilt schema matches live, column by column
+```
+
+`schema_diff.php` is the Phase 3 gate. It compares a migration-built database against
+the live one and must report **zero differences**. It deliberately ignores
+AUTO_INCREMENT counters and collation — the live dev database uses MySQL 8's
+`utf8mb4_0900_ai_ci`, while the migrations use the connection default so they restore
+on MariaDB and older MySQL, mirroring what the legacy SQL export already does.
+
+To re-verify locally:
+
+```sql
+DROP DATABASE IF EXISTS deskpulse_verify;
+CREATE DATABASE deskpulse_verify CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+```bash
+# point DB_DATABASE at deskpulse_verify, then:
+php artisan migrate --force
+php tools/schema_diff.php
+```
+
+### Two things that are easy to get wrong
+
+**Primary keys are SIGNED.** Laravel's `increments()` and `bigIncrements()` produce
+`int unsigned`, but every primary key in this schema is a signed `int`. An unsigned PK
+makes every signed foreign key incompatible — MySQL error 3780 — so the generator emits
+`integer('id', true, false)` instead.
+
+**Laravel's skeleton migrations were removed, not merged.** They create `users`,
+`sessions`, `cache`, `jobs` and `password_reset_tokens`. Two of those collide head-on:
+DeskPulse already has a `users` table with a completely different shape, and its
+`sessions` table holds **work sessions**, not HTTP sessions. The real schema wins.
+
+That is also why `SESSION_DRIVER=file` and `CACHE_STORE=file`: the database drivers
+would want tables that clash or do not exist. When queues are adopted, add Laravel's
+`jobs`/`failed_jobs` tables as their own migration — they do not collide.
 
 ## Conventions established in Phase 2
 

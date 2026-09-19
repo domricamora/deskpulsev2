@@ -165,12 +165,12 @@ None of these can be settled from the code; each changes output or behaviour.
 
 | # | Decision | Needed before | Default recommendation |
 |---|---|---|---|
-| D1 | **Money: keep `double` or convert to decimal/cents?** | Phase 3 | Keep as-is, prove parity, convert later under test (`database.md` §3) |
+| D1 | ~~Money: keep `double` or convert?~~ | Phase 3 | **DECIDED 2026-09-20 — keep `double`.** Migrate columns as-is so Phase 11 golden-master can prove parity; convert later as a separate approved change (`database.md` §3) |
 | D2 | **Overtime day-bucketing: server-local (current) or `report_tz`?** | Phase 9 | Replicate server-local; fix later with both clocks together (`monitoring.md` §4) |
 | D3 | **Offline replay: duplicate (current) or dedup?** | Phase 9 | Replicate duplication; dedup deviates and changes history (`agent-protocol.md` §5) |
-| D4 | **Screenshots: keep public URLs or move to private disk?** | Phase 9 | **Move to private.** Security regression otherwise (`screenshots.md` §4) |
-| D5 | **Remote frames: same question, worse exposure** | Phase 16 | **Move to private.** Sequential, guessable path (`remote-control.md` §5) |
-| D6 | **Tenancy: transitive scopes or denormalize `org_id`?** | Phase 4 | Transitive — no schema change (`database.md` §2) |
+| D4 | ~~Screenshots: public URLs or private disk?~~ | Phase 9 | **DECIDED 2026-09-20 — move to private disk + authorized route.** Images render as now; only the URL shape changes, so existing deep links stop resolving (`screenshots.md` §4) |
+| D5 | ~~Remote frames: same question, worse exposure~~ | Phase 16 | **DECIDED 2026-09-20 — move to private disk + authorized route**, and delete the frame when the session ends (`remote-control.md` §5) |
+| D6 | ~~Tenancy: transitive scopes or denormalize?~~ | Phase 4 | **DECIDED 2026-09-20 — transitive scopes.** Constrain via the `users` relationship, mirroring `org_user_ids()`. No schema change, no backfill. Denormalising stays a Phase 20 option (`database.md` §2) |
 | D7 | **Excel readers: keep hand-rolled or PhpSpreadsheet?** | Phase 13 | Keep; row shape and loose header matching are depended on (`payroll.md` §5) |
 | D8 | **`DpPdf`: port or replace?** | Phase 13 | Port, or accept a signed-off visual diff (`payroll.md` §4) |
 | D9 | **Arbitrary SQL upload: keep, gate, or drop?** | Phase 17 | Drop once `artisan migrate` exists (`platform.md` §5) |
@@ -181,9 +181,8 @@ None of these can be settled from the code; each changes output or behaviour.
 | D14 | **Audit log: build it (plan §32) or keep the derived view?** | Phase 17 | Replica ⇒ derived view. Building it is new scope (`database.md` §5) |
 | D15 | **Legacy `v1:` ciphertext: port `dp_decrypt()` or re-enter secrets?** | Phase 21 | Port the reader; re-entering is the fallback (`security.md` §4) |
 
-D4 and D5 are the two where "nothing else changes" and "do not regress security"
-genuinely conflict. Both are cross-tenant unauthenticated reads of the most sensitive
-data in the product. Recommendation is to fix both, and both need an explicit call.
+**D1, D4, D5 and D6 are settled** (2026-09-20). The remainder are still open; D2 is the
+next one needed, before Phase 9.
 
 ## 6. Highest-risk items overall
 
