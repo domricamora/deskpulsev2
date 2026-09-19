@@ -61,7 +61,7 @@ server/install/*.sql
 
 # PHP session storage (private per-app directory)
 server/sessions/
-sessions/
+# (scoped below — a bare "sessions/" would also ignore storage/framework/sessions/)
 
 # Local MCP tooling config (Playwright etc.)
 .mcp.json
@@ -71,3 +71,29 @@ sessions/
 
 # Ad-hoc debug screenshots from browser testing
 download-page*.png
+
+# ── Laravel ──
+*.log
+.env.backup
+.env.production
+.phpactor.json
+.phpunit.result.cache
+/.codex
+/.cursor/
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+/auth.json
+/node_modules
+/public/build
+/public/fonts-manifest.dev.json
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/vendor
+_ide_helper.php
+Homestead.json
+Homestead.yaml

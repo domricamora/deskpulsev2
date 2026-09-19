@@ -1,0 +1,137 @@
+name: Laravel tests
+
+# Runs the Laravel suite against MySQL — never sqlite. The migrations generated in
+# Phase 3 come from the live MySQL schema, so testing on another engine would pass
+# migrations that do not reproduce it. See docs/migration/testing.md.
+
+on:
+  push:
+    branches: ["main", "laravel-migration"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pest:
+    name: Pest (PHP ${{ matrix.php }}, MySQL)
+    runs-on: ubuntu-latest
+
+    # The production host serves PHP 8.3 only, and composer.json pins the platform
+    # to match. Testing on anything newer would let a package through that
+    # production cannot run.
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["8.3"]
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: deskpulse_test
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          # Matches the extension set the application relies on: zip for the
+          # dependency-free xlsx reader, gd (with WebP) for logos and payslip PDFs.
+          extensions: ctype, curl, dom, fileinfo, filter, gd, iconv, intl, mbstring, openssl, pdo, pdo_mysql, tokenizer, xml, zip
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ matrix.php }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ matrix.php }}-
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Build frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Wait for MySQL
+        run: |
+          for i in $(seq 1 30); do
+            mysqladmin ping -h 127.0.0.1 -P 3306 -u root --silent && break
+            sleep 2
+          done
+          mysql -h 127.0.0.1 -P 3306 -u root -e "CREATE DATABASE IF NOT EXISTS deskpulse_test;"
+
+      - name: Run Pest
+        run: php vendor/bin/pest --colors=never
+
+  legacy-webhook-contract:
+    name: Legacy webhook harness still passes
+    runs-on: ubuntu-latest
+
+    # tools/test_webhook.py exercises the full agent ingest path and is the
+    # existing end-to-end harness. It must keep working UNMODIFIED against the
+    # Laravel API — that is the Phase 7 gate (docs/migration/testing.md §1).
+    #
+    # Skipped until the agent endpoints exist; enable in Phase 7.
+    if: false
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: deskpulse_test
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: ctype, curl, dom, fileinfo, filter, gd, iconv, intl, mbstring, openssl, pdo, pdo_mysql, tokenizer, xml, zip
+          coverage: none
+
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+
+      - name: Install dependencies
+        run: |
+          composer install --prefer-dist --no-interaction --no-progress
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Boot the application
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan migrate --force
+          php artisan db:seed --force
+          php artisan serve --host=127.0.0.1 --port=8000 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/up > /dev/null && break
+            sleep 2
+          done
+
+      - name: Run the unmodified agent harness
+        run: python tools/test_webhook.py http://127.0.0.1:8000 ava@demo.test Demo12345
