@@ -58,8 +58,6 @@ server/install/*.sql
 # Build artifacts
 *.zip
 
-# Claude Code local project data (skills, plans, memory)
-.claude/
 
 # PHP session storage (private per-app directory)
 server/sessions/

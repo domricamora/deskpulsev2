@@ -18,7 +18,7 @@ Two routes:
 | `GET /app/live` | the page shell (`dash_live`) |
 | `GET /app/live/data` | JSON payload (`dash_live_data`) |
 
-Both require the `live` capability. `claude.md` §26 says to start with polling and
+Both require the `live` capability. The migration plan §26 says to start with polling and
 only consider Reverb/WebSockets after parity — the existing system **is** the polling
 implementation, so there is nothing to build up to. Do not introduce WebSockets.
 
@@ -95,7 +95,7 @@ Performance notes for Phase 20 (not Phase 10):
 
 - The card build is per open session — a classic N+1 if ported naively. Eager-load
   user, client, team and the latest screenshot.
-- `claude.md` §43 warns against caching volatile live data. With a 15s poll, any cache
+- The migration plan §43 warns against caching volatile live data. With a 15s poll, any cache
   TTL above a few seconds makes the view wrong; prefer query tuning over caching.
 - `close_stale_sessions()` writes on every poll, so the endpoint is not read-only —
   it must not be served from a read replica or a cached response.

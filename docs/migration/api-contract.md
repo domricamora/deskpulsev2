@@ -5,7 +5,7 @@
 > Therefore every route, header, payload shape, status code and signature rule on
 > this page is **frozen**. Laravel must serve these byte-for-byte.
 >
-> This **overrides `claude.md` §12 and §57**, which propose moving the agent to
+> This **overrides the migration plan §12 and §57**, which propose moving the agent to
 > `/api/v1/...`. There is no `/api/v1` today and there must not be one for the agent.
 > A versioned namespace may be added later *in addition*, never as a replacement.
 
@@ -67,7 +67,7 @@ Rules that must not drift:
 | Digest mismatch | 401 | `{"error":"bad signature"}` |
 
 > **No replay protection exists.** There is no nonce, timestamp or window; a captured
-> request replays forever. `claude.md` §60 asks for a replay test — today replay is
+> request replays forever. The migration plan §60 asks for a replay test — today replay is
 > *accepted*. Adding rejection is a behaviour change; see `security.md`.
 
 > **`last_seen` uses `NOW()`, not `UTC_TIMESTAMP()`** — the only place in the ingest

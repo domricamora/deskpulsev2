@@ -4,7 +4,7 @@ Source of truth: `server/src/remote.php` (278 lines), `agent/monitor/remote.py`,
 `agent/monitor/inject.py`, `agent/monitor/winject.py`,
 `server/public/assets/js/remote.js`.
 
-`claude.md` §33 says document the exact protocol before touching it. This is that
+The migration plan §33 says document the exact protocol before touching it. This is that
 document. **Do not rewrite this module during the migration** — port it behaviour-for-
 behaviour and audit it separately.
 
@@ -137,7 +137,7 @@ Existing behaviour; the agent is unchanged (`agent-protocol.md` §1).
 ## 7. Audit
 
 `remote_sessions` start/end rows are two of the six sources behind the derived
-`/app/audit` feed (`database.md` §5) — the only part of `claude.md` §32's audit
+`/app/audit` feed (`database.md` §5) — the only part of the migration plan §32's audit
 requirement that exists today. `admin_user_id` records who initiated. Input events are
 **deleted as they are drained**, so there is no record of what was actually typed or
 clicked.

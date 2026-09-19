@@ -10,7 +10,7 @@ RescueTime.
   server over **HMAC-signed webhooks**.
 
 > Architecture, the full requirements log, and data model are documented in
-> [CLAUDE.md](CLAUDE.md).
+> [docs/MIGRATION-PLAN.md](docs/MIGRATION-PLAN.md).
 
 ## Features
 

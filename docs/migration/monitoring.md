@@ -29,7 +29,7 @@ how it is derived.
 
 The plan can only *remove* capability, never grant it. Preserve that asymmetry.
 
-The 15-minute idle default satisfies `claude.md` §18, and it is already in one place —
+The 15-minute idle default satisfies the migration plan §18, and it is already in one place —
 this function. Read it from here; do not re-hardcode it.
 
 ### Plan limits
@@ -63,7 +63,7 @@ limits are real and enforced server-side, not just in the UI — see `api-contra
 | `overtime_s`, `overtime_status`, `overtime_reviewed_*`, `overtime_computed` | overtime split |
 | `project_id` | deprecated |
 
-Approval defaults by source (`claude.md` §17 — already true):
+Approval defaults by source (the migration plan §17 — already true):
 
 - `agent` → `approved`
 - `manual` → `pending` until a manager with `approve_time` acts
@@ -150,7 +150,7 @@ Consequences for the migration:
 | Idle periods | `idle_periods` | `POST …/idle` | `duration_s` computed **server-side** as `end − start`, floored at 0 |
 
 Windows and processes arrive in **one request** (`{windows:[…], processes:[…]}`) —
-they are not separate endpoints, contrary to `claude.md` §12 which lists a
+they are not separate endpoints, contrary to the migration plan §12 which lists a
 `/webhooks/processes`. No such route exists.
 
 Live totals refresh from the activity call, guarded:
@@ -159,13 +159,13 @@ Live totals refresh from the activity call, guarded:
 UPDATE sessions SET active_s=?, inactive_s=? WHERE id=? AND ended_at IS NULL
 ```
 
-`claude.md` §18 says "do not overwrite raw agent data" — already honoured; samples,
+The migration plan §18 says "do not overwrite raw agent data" — already honoured; samples,
 window events and idle periods are append-only. Only the session *totals* are updated,
 and only while open.
 
 ## 6. Privacy behaviour — do not weaken
 
-`claude.md` §79 requires consent-first monitoring. Current behaviour:
+The migration plan §79 requires consent-first monitoring. Current behaviour:
 
 - Tracking runs **only while the session timer is on**, with a visible "● Monitoring"
   indicator in the tray app.
@@ -186,7 +186,7 @@ removed.
 | `recompute_overtime()` | `OvertimeService`, invoked on session close |
 | `creditable_active_s()` | `WorkSession::creditableActiveSeconds()` |
 
-Ingest must stay synchronous. `claude.md` §44 already says not to queue the basic
+Ingest must stay synchronous. The migration plan §44 already says not to queue the basic
 webhook path — the agent needs a fast acknowledgement, and `recompute_overtime()` runs
 inside the stop request today.
 

@@ -4,14 +4,14 @@ Source of truth: `server/src/payroll.php` (1,315 lines), `server/src/helpers.php
 (`xlsx_rows`, `csv_rows`, `import_specs`), `server/src/pdf.php`,
 `server/src/dashboard.php` (`dash_import`).
 
-`claude.md` §22 describes only the Excel import. The live subsystem is much larger:
+The migration plan §22 describes only the Excel import. The live subsystem is much larger:
 pay runs, adjustments, paid time off, Wise payout details, salary-run export and PDF
 payslips.
 
 ## 1. `compute_pay_run()` is the only money calculation
 
 > *"`compute_pay_run()` is the single source of truth for money. Don't recompute pay
-> anywhere else."* — production `CLAUDE.md`
+> anywhere else."* — the production system notes
 
 The Payroll page, payslip PDFs and the salary run all read from it, so they cannot
 disagree. Preserve that single-entry-point property.
@@ -184,7 +184,7 @@ Re-importing the same file does not duplicate. Preserve both keys exactly.
   downloadable blank template (`/app/import/template/{key}`). Adding a column there
   makes it appear everywhere — the guide can never drift from the parser.
 
-> `claude.md` §22 suggests PhpSpreadsheet. It would change the row/cell shape every
+> The migration plan §22 suggests PhpSpreadsheet. It would change the row/cell shape every
 > importer depends on, and must reproduce the 60-row header scan and loose matching or
 > real payroll files stop importing. Recommendation: **keep the existing readers** for
 > Phase 13 and treat PhpSpreadsheet as optional later work behind the same interface.
@@ -210,7 +210,7 @@ commit**. Synthetic import addresses (`…@import.deskpulse.local`) are never ma
 | `xlsx_rows`/`csv_rows`/`import_specs` | keep; wrap behind `SheetReader` |
 | `dash_import()` | `PayrollImportController` + `PayrollImportService` (queued, §44) |
 
-`claude.md` §9 lists `PayrollImport` / `PayrollImportRow` models. **No such tables
+The migration plan §9 lists `PayrollImport` / `PayrollImportRow` models. **No such tables
 exist** — import writes straight into `clients`, `users` and `sessions`. Adding staging
 tables is new functionality; the idempotency keys in §5 are what make re-import safe
 today.

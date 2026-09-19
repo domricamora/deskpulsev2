@@ -3,7 +3,7 @@
 Source of truth: `server/src/auth.php`, `server/src/oauth.php`.
 
 Covers password auth, the signup lifecycle, password reset, **OIDC federated sign-in
-and enterprise SSO** (which `claude.md` never mentions), and the four gates that stand
+and enterprise SSO** (which the migration plan never mentions), and the four gates that stand
 between a valid session and a usable page.
 
 ## 1. Session identity
@@ -28,7 +28,7 @@ function current_user(): ?array {
   `$_SESSION['act_org']`, and the override is validated against the database before
   use. Every org-scoped page then works unchanged.
 - The org id is never read from the request — it comes from the session or the user
-  row (`claude.md` §6: "never trust an organization ID submitted by the browser" —
+  row (the migration plan §6: "never trust an organization ID submitted by the browser" —
   already true).
 
 ## 2. Four gates, in order
@@ -59,7 +59,7 @@ role (see `routes.md` §5).
 `handle_logout()` clears the session.
 
 **Remember-me does not exist.** Cookie `lifetime => 0` — sessions are browser-session
-scoped with a 1-day server GC. `claude.md` §10 says "remember me if currently
+scoped with a 1-day server GC. The migration plan §10 says "remember me if currently
 supported"; it is not. Do not add it.
 
 ## 4. Signup lifecycle
@@ -72,7 +72,7 @@ marketing /register
    ↓ approved  → company-admin setup wizard (/app/onboarding)
 ```
 
-Matches `claude.md` §10. Additional real behaviour:
+Matches the migration plan §10. Additional real behaviour:
 
 - Registration captures a **plan choice** (`plan_signup_price()`), and first-touch UTM
   attribution recorded earlier in the request by `attribution_capture()`.
@@ -100,7 +100,7 @@ Matches `claude.md` §10. Additional real behaviour:
 > waits for cron is useless. Laravel must send this one synchronously even though
 > everything else queues. See `messaging.md`.
 
-## 6. Federated sign-in — OIDC (absent from `claude.md`)
+## 6. Federated sign-in — OIDC (absent from the migration plan)
 
 `server/src/oauth.php`, 462 lines. Routes `/auth/{provider}` and
 `/auth/{provider}/callback`.
@@ -198,7 +198,7 @@ login — so all four gates in §2 apply equally to SSO users.
 
 | Risk | Severity | Note |
 |---|---|---|
-| Omitting OIDC/SSO — absent from `claude.md` | **High** | Live sign-in path; users would be locked out |
+| Omitting OIDC/SSO — absent from the migration plan | **High** | Live sign-in path; users would be locked out |
 | Putting `/webhooks/*` behind the paywall | **High** | Silently stops tracking for lapsed orgs |
 | Dropping nonce/audience checks by using a generic library | **High** | Callback replay / token substitution |
 | Matching identities on email instead of `subject` | **High** | Account takeover via email change |

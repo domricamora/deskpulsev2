@@ -3,7 +3,7 @@
 Source of truth: `server/public/index.php` (the whole route table, 178 lines) and the
 handler guards in `server/src/dashboard.php`.
 
-> **Replica constraint:** URLs do not change. `claude.md` §51 proposes renames
+> **Replica constraint:** URLs do not change. The migration plan §51 proposes renames
 > (`/app` → dashboard, `/app/team` → teams, `/app/reports` → reports). The real app
 > already uses different paths and the user has asked for an exact replica, so the
 > table below is authoritative over §51.
@@ -173,7 +173,7 @@ Remote control: `/webhooks/remote/poll` (GET), `/webhooks/remote/{id}/frame` (PO
 Provider: `POST /webhooks/wise` — RSA-SHA256, **not** device HMAC; returns 410 while
 `pay_method='bank'`.
 
-## 7. Routes in `claude.md` §51 that do not exist
+## 7. Routes in the migration plan §51 that do not exist
 
 | §51 says | Reality |
 |---|---|

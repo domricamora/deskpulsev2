@@ -86,7 +86,7 @@ authorized route 200, logged-out 302.
 
 ## 2. Verification already performed by the existing team
 
-Recorded in the production `CLAUDE.md` session logs — useful as a regression baseline:
+Recorded in the production system notes session logs — useful as a regression baseline:
 
 - Encryption round-trips; fails under a rotated `app_secret`; ciphertext never contains
   the plaintext; two encryptions differ.
@@ -116,7 +116,7 @@ is world-readable to anyone with the URL (this is already true of screenshots)"*
 Mitigation today is only the 16-hex-byte random filename — unguessable, but permanent,
 shareable, and exposed by any referrer leak, proxy log or browser history sync.
 
-`claude.md` §24 already requires fixing this (private disk + authorized controller).
+The migration plan §24 already requires fixing this (private disk + authorized controller).
 It is the one place where "change nothing" and "do not regress security" conflict.
 
 > **Recommendation:** fix it during Phase 9. Screenshots move to a private disk served
@@ -146,12 +146,12 @@ heavily. Noted in the source as a pragmatic choice pending nonces.
 `/app/audit` is derived at read time from six existing timestamp sources; nothing is
 written. Logins, role changes, rate changes, billing changes, screenshot access,
 payroll imports and deletions are **not recorded**. See `database.md` §5.
-`claude.md` §32 is net-new work, not a migration.
+The migration plan §32 is net-new work, not a migration.
 
 ### 3.5 Money in `double`
 
 `users.pay_rate`, `users.bill_rate` and most org pricing are `double` — contradicting
-`claude.md` §82 rule 17. See `database.md` §3.
+The migration plan §82 rule 17. See `database.md` §3.
 
 ### 3.6 Unverified Wise deliveries are accepted when no key is configured
 
@@ -163,7 +163,7 @@ transfer.
 ### 3.7 Device registration is unthrottled and unbounded
 
 `POST /webhooks/auth` inserts a new `devices` row per call with no dedup and no rate
-limit. Valid credentials can mint unlimited devices. `claude.md` §46 asks for a
+limit. Valid credentials can mint unlimited devices. The migration plan §46 asks for a
 registration limit; adding one is a behaviour change (the agent does not expect 429).
 
 ## 4. Laravel destination

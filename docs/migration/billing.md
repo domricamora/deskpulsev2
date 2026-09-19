@@ -49,7 +49,7 @@ $amount  = $monthly ? $rate * $monthFactor      // flat service charge, prorated
 
 For a **single-client view**, a monthly agent's flat charge is further split by that
 client's share of the agent's total time — which is why `agentTotalSecs` is tracked
-even when filtered out. This is the "prorating/splitting behaviour" of `claude.md` §21,
+even when filtered out. This is the "prorating/splitting behaviour" of the migration plan §21,
 and it is subtle: the divisor is the agent's *total* time, not the filtered time.
 
 Output is two rollups: `byAgent` and `byClient`, plus `Unassigned` for sessions with no
@@ -77,7 +77,7 @@ client.
 `$rate * $monthFactor`, `$hours * $rate` — all float arithmetic over `double` columns
 (`users.bill_rate` is `double`; see `database.md` §3).
 
-`claude.md` §82 rule 17 forbids floats for money, but the current system uses them
+The migration plan §82 rule 17 forbids floats for money, but the current system uses them
 end to end. Converting to integer cents or `decimal` **changes output** at the cent
 level and breaks golden-master comparison.
 
@@ -95,15 +95,15 @@ level and breaks golden-master comparison.
 | `user_hourly_rate()` | `LaborCostCalculator` |
 | `user_bill_rate()` | `BillingCalculator::rateFor()` |
 | `/app/billing`, `/app/billing.csv` | `BillingController@index`, `@export` |
-| CSV | `ReportExportService`, streamed (`claude.md` §41) |
+| CSV | `ReportExportService`, streamed (the migration plan §41) |
 
 Rate exposure must be enforced **server-side**: a viewer without `view_rates` must not
 receive cost fields in the response or the CSV at all — not merely have them hidden in
-Blade (`claude.md` §23).
+Blade (the migration plan §23).
 
 ## 6. Required tests
 
-Per `claude.md` §60 — hourly, monthly, proration, per-user, per-client:
+Per the migration plan §60 — hourly, monthly, proration, per-user, per-client:
 
 - Hourly agent: `hours × bill_rate`.
 - Monthly agent: `bill_rate × monthFactor`; a full month ⇒ exactly one fee.

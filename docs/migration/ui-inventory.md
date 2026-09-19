@@ -21,7 +21,7 @@ This is not a redesign brief. It is the specification Tailwind output must match
 Near-black surfaces, light ink. **A single theme — no light variant, no toggle, no
 `prefers-color-scheme` handling.**
 
-`claude.md` §74 asks for light/dark/system via Tailwind's dark-mode strategy. Under
+The migration plan §74 asks for light/dark/system via Tailwind's dark-mode strategy. Under
 the replica constraint that is **new functionality**, not a migration. Tailwind's
 default is a light theme, so the port must explicitly rebuild the dark palette as the
 *only* theme — otherwise the app comes out white.
@@ -50,7 +50,7 @@ Plus composed tokens that carry the product's texture:
 --glow-teal:     0 0 0 1px rgba(45,212,191,.28), 0 10px 34px rgba(45,212,191,.14);
 ```
 
-This confirms `claude.md` §38's "blue DeskPulse identity" — blue `#3b82f6` primary
+This confirms the migration plan §38's "blue DeskPulse identity" — blue `#3b82f6` primary
 with a teal `#2dd4bf` accent, on near-black.
 
 **`--radius` is 4px** (buttons 3px). Tailwind's defaults are much rounder; every
@@ -174,7 +174,7 @@ These are **behaviours**, not decoration. Losing them changes how every page wor
 
 `<canvas class="dp-chart" data-type="bars|hbars|line" …>` → Chart.js, **vendored** at
 `assets/js/vendor/chart.umd.js` and loaded same-origin because the CSP blocks external
-scripts. `claude.md` §39's "dependency-free canvas charts" is outdated.
+scripts. The migration plan §39's "dependency-free canvas charts" is outdated.
 
 ### `dashboard.js` (125)
 
@@ -202,7 +202,7 @@ part of the template port.
 1. Port tokens in §2 into the Tailwind 4 theme (`@theme`) as CSS variables — same
    names, same values. Everything else keys off them.
 2. Self-host Inter and Plus Jakarta Sans via Vite; keep `font-src 'self'`.
-3. Build Blade components for the repeated primitives (`claude.md` §73):
+3. Build Blade components for the repeated primitives (the migration plan §73):
    `x-button`, `x-card`, `x-panel`, `x-stat`, `x-badge`, `x-pill`, `x-table`,
    `x-modal`, `x-alert`, `x-empty-state`, `x-icon`, `x-period-switch`.
 4. **Port `tables.js` and `charts.js` as-is first.** They are framework-agnostic and

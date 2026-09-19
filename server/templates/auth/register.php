@@ -2,7 +2,7 @@
 /**
  * Signup. Expects $plan, $soloish, $old, $prices, $trial_days, $plan_price.
  *
- * Design notes (see the signup CRO audit in CLAUDE.md):
+ * Design notes (see the signup CRO audit in the project notes):
  *  - The plan rides as a hidden field, so a pricing-page CTA actually survives the POST.
  *  - Easiest field first (name), hardest last (company) — and company is optional on the
  *    single-user plans, where "company workspace name" is meaningless friction.

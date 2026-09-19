@@ -33,7 +33,7 @@ users are redirected to `/login` earlier, by `require_login()`.
 
 ## 2. The capability set — 28 capabilities
 
-`claude.md` §4 lists **16**. The application defines **28**. Migrating only the
+The migration plan §4 lists **16**. The application defines **28**. Migrating only the
 listed 16 would silently drop 12 authorization controls.
 
 Documented in the `role_caps()` docblock (25):
@@ -92,7 +92,7 @@ Present in the matrix but **absent from the docblock** — undocumented, still e
    `payroll` but **not** `view_rates`. Granting HR `view_rates` would be a privilege
    escalation against current behaviour.
 2. **`hr_manager` has no `screenshots`.** HR sees time and money, never monitoring
-   imagery. (`claude.md` §23 asks for a test proving this — it holds today.)
+   imagery. (the migration plan §23 asks for a test proving this — it holds today.)
 3. **`it_admin` has `remote`** — IT can remote-control machines — but has no
    `reports`, `screenshots`, `view_rates` or `approve_time`.
 4. **`client_viewer` has `screenshots` and `billing`**, but not `view_rates`. Its
@@ -143,7 +143,7 @@ tenants or teams.
 
 | Risk | Severity | Note |
 |---|---|---|
-| Porting only the 16 capabilities named in `claude.md` §4 | **High** | Drops 12 real controls, including all payroll / leave / messaging / import gating |
+| Porting only the 16 capabilities named in the migration plan §4 | **High** | Drops 12 real controls, including all payroll / leave / messaging / import gating |
 | Granting HR `view_rates` "for consistency" | **High** | Privilege escalation vs. today |
 | Laravel's default 403 replacing the redirect | Medium | Visible flow change; an exact replica is required |
 | Treating `require_super()` as `can('platform')` | Medium | Any future role holding `platform` would gain super-admin routes |

@@ -99,7 +99,7 @@ def flush_queue(self):
 > item in the queue forever, retried on every flush, eventually evicting good data
 > past the 500 cap.
 >
-> `claude.md` §45 assumes the agent distinguishes these classes. **It does not.**
+> The migration plan §45 assumes the agent distinguishes these classes. **It does not.**
 > Therefore: for queued endpoints, Laravel must return **2xx for anything it intends
 > to discard**, and reserve non-2xx for genuinely retryable conditions. This is why
 > the current handlers validate permissively and store `NULL` rather than rejecting.
@@ -119,7 +119,7 @@ UPDATE sessions SET active_s=?, inactive_s=? WHERE id=? AND ended_at IS NULL
 
 which stops a stale batch clobbering finalized totals.
 
-This contradicts `claude.md` §15 ("do not create duplicate records when the same event
+This contradicts the migration plan §15 ("do not create duplicate records when the same event
 is replayed"). The protocol carries nothing to deduplicate on, so honouring §15 would
 require either a **protocol change** (excluded — the agent is frozen) or **server-side
 heuristic dedup** on `(session_id, ts, …)`, which changes recorded data.
@@ -148,7 +148,7 @@ stop      →  PATCH /webhooks/session/{id}     (queued)
 ```
 
 - Tracking runs **only while the session timer is on**, with a visible "● Monitoring"
-  indicator. This is a privacy guarantee (`claude.md` §79) — do not add server
+  indicator. This is a privacy guarantee (the migration plan §79) — do not add server
   behaviour that implies capture outside a session.
 - `/webhooks/me` returning 401 is the revocation channel.
 - `schedule` from `/webhooks/me` drives auto start/stop within working hours.
@@ -169,13 +169,13 @@ No agent changes. Server-side only:
 | Signature check | `VerifyDeskPulseSignature` over `$request->getContent()` |
 | Route group | `/webhooks/*`, CSRF-exempt, no `TrimStrings`/`ConvertEmptyStringsToNull` |
 | Handlers | thin controller → `app/Services/Agent/*IngestService` |
-| Rate limiting | agent ingest must have its **own** limiter; a 429 is indistinguishable from failure and will queue-and-retry (`claude.md` §46) |
+| Rate limiting | agent ingest must have its **own** limiter; a 429 is indistinguishable from failure and will queue-and-retry (the migration plan §46) |
 
 ## 9. Required tests
 
 Run `tools/test_webhook.py` unmodified against Laravel — it exercises register →
 session → activity → windows → idle → screenshot and is the existing harness
-(`claude.md` §59 requires it keep working).
+(the migration plan §59 requires it keep working).
 
 Beyond that:
 
@@ -196,6 +196,6 @@ Beyond that:
 | Changing agent-facing routes | **Critical** | Deployed installs break; no auto-update path assumed |
 | Returning 422/429 on queued endpoints | **High** | Poison items retried forever, evict good data |
 | Re-encoding the body before HMAC | **Critical** | Universal signature failure |
-| Assuming the agent classifies errors | **High** | `claude.md` §45 is incorrect about this client |
+| Assuming the agent classifies errors | **High** | the migration plan §45 is incorrect about this client |
 | Silently "fixing" replay duplication | Medium | Changes historical report figures; must be a decision |
 | Aggressive global rate limiting | Medium | Heartbeat/ingest traffic is legitimate and bursty after downtime |

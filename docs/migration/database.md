@@ -7,7 +7,7 @@ application actually runs against.
 
 ## 1. The headline finding: `schema.sql` is not the schema
 
-`claude.md` §7 says "Convert `server/schema.sql` into Laravel migrations." **Doing only
+The migration plan §7 says "Convert `server/schema.sql` into Laravel migrations." **Doing only
 that loses 7 tables and 10 columns.**
 
 | Source | Tables | Columns |
@@ -48,7 +48,7 @@ sign-in and promo machinery.
 
 ## 2. Tenancy is NOT a column on most tables
 
-`claude.md` §8 proposes a global `OrganizationScope` filtering `organization_id`.
+The migration plan §8 proposes a global `OrganizationScope` filtering `organization_id`.
 **17 of 37 tables have no `org_id` at all**, including the busiest ones:
 
 ```
@@ -96,7 +96,7 @@ applied. Options:
 
 Default to (a) for parity; (b) is a Phase 20 performance option, not a Phase 3 one.
 
-> Whichever is chosen, the mandatory test from `claude.md` §8 — *Org A cannot retrieve
+> Whichever is chosen, the mandatory test from the migration plan §8 — *Org A cannot retrieve
 > Org B records* — must cover the **transitive** tables, not just those with `org_id`.
 
 ## 3. Money is stored three different ways
@@ -107,7 +107,7 @@ Default to (a) for parity; (b) is a Phase 20 performance option, not a Phase 3 o
 | `decimal(10,2)` / `decimal(12,2)` | `organizations.price_individual`, `price_organization`, `pay_adjustments.amount`, `payslips.gross`, `net`, `deductions` |
 | `int` (cents) | `invoices.amount_cents`, `payments.amount_cents`, `payment_claims.amount_cents` |
 
-`claude.md` §82 rule 17 says *"never use floating-point values for monetary
+The migration plan §82 rule 17 says *"never use floating-point values for monetary
 calculations."* **The existing schema already violates this** — the two rates that
 drive nearly all money (`pay_rate`, `bill_rate`) are `double`.
 
@@ -173,7 +173,7 @@ remote_sessions.ended_at   → "Remote session ended"
 
 Consequences:
 
-- Nothing in `claude.md` §32's list — login, role change, user creation/deletion, rate
+- Nothing in the migration plan §32's list — login, role change, user creation/deletion, rate
   change, billing change, screenshot access, payroll import, data deletion — is
   recorded today. Those events are **unauditable retrospectively**.
 - §32 is therefore **net-new functionality, not a migration**. Under "nothing else

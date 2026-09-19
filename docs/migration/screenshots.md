@@ -9,7 +9,7 @@ Source of truth: `server/src/webhooks.php` (`wh_screenshot`), `server/src/dashbo
 The agent reads `GET /webhooks/policy` and honours `screenshot_interval_min`,
 `screenshot_blur` and `track_screenshots`. **Blur is applied on the agent**, before
 upload — the server stores whatever it receives and records the flag. There is no
-server-side blur, so nothing moves into a job (`claude.md` §25).
+server-side blur, so nothing moves into a job (the migration plan §25).
 
 Policy is a *request*, not a control. A stale or modified agent can post anyway, so
 ingest re-checks the plan and answers **402** when screenshots are not included. That
@@ -89,7 +89,7 @@ reusable, and leaks through referrer headers, proxy and CDN logs, browser histor
 sync, and anyone a link is forwarded to. It is a capability URL for the most sensitive
 data the product holds.
 
-`claude.md` §24 already mandates the fix: private disk + authorized controller.
+The migration plan §24 already mandates the fix: private disk + authorized controller.
 
 > **Recommendation — take this in Phase 9.** Screenshots move to
 > `storage/app/private/screenshots/{org}/{user}/{date}/` and are served through an
@@ -135,7 +135,7 @@ bytes the HMAC was computed over.
 
 ## 7. Required tests
 
-Per `claude.md` §60 — authorized, unauthorized, wrong tenant, wrong user:
+Per the migration plan §60 — authorized, unauthorized, wrong tenant, wrong user:
 
 - `screenshots` capability required for `/app/screenshots`; `hr_manager` refused.
 - A manager sees only their team's shots; `client_viewer` only its client's agents.

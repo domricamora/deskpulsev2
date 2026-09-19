@@ -82,7 +82,7 @@ bank transfer. Do not port it.
 
 > `dashboard.php` at 4,986 lines is one file holding ~56 page handlers. It is the
 > single biggest decomposition job in the migration and maps to roughly 20 Laravel
-> controllers (`claude.md` §52).
+> controllers (the migration plan §52).
 
 ## 4. Deliberate "no dependency" choices
 
@@ -91,7 +91,7 @@ decision, because Laravel *does* have Composer:
 
 | Hand-rolled | Where | Laravel option |
 |---|---|---|
-| xlsx reader (ZipArchive + DOM) | `helpers.php` `xlsx_rows()` | PhpSpreadsheet (`claude.md` §22) |
+| xlsx reader (ZipArchive + DOM) | `helpers.php` `xlsx_rows()` | PhpSpreadsheet (the migration plan §22) |
 | CSV reader matching the xlsx row shape | `helpers.php` `csv_rows()` | League\Csv |
 | PDF 1.4 writer with base-14 metrics | `pdf.php` `DpPdf` | dompdf / tcpdf |
 | SMTP client (STARTTLS, AUTH LOGIN, MIME) | `mailer.php` | Laravel Mail |
@@ -106,7 +106,7 @@ the row shape every importer depends on, and must reproduce the loose header mat
 or real payroll files stop importing. See `payroll.md`.
 
 Chart.js **is** used — vendored at `public/assets/js/vendor/chart.umd.js`, loaded
-same-origin because the CSP blocks external scripts. `claude.md` §39 calls the charts
+same-origin because the CSP blocks external scripts. The migration plan §39 calls the charts
 "dependency-free"; that claim is outdated and the file itself says so.
 
 ## 5. Frontend
@@ -149,7 +149,7 @@ and receipts to private storage *because* of it. See `screenshots.md` and
 | `bootstrap.php` | framework kernel + middleware stack |
 | `Router` | `routes/web.php`, `routes/agent.php` |
 | 16 `require`s | PSR-4 autoloading |
-| `dashboard.php` | ~20 controllers + services (`claude.md` §52, §54) |
+| `dashboard.php` | ~20 controllers + services (the migration plan §52, §54) |
 | `templates/*.php` | `resources/views/**.blade.php` |
 | `deskpulse.css` + inline styles | Tailwind 4 via Vite |
 | `config.php` | `.env` + `config/deskpulse.php` |
