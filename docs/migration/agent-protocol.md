@@ -14,7 +14,7 @@ Source of truth: `agent/webhook_client.py`, `agent/config.py`, `agent/main.py`,
 |---|---|---|
 | Windows | yes | **yes** — PyInstaller (`deskpulse.spec`) + Inno Setup (`installer.iss`), `build.ps1` |
 | macOS | yes | **yes** — `deskpulse_mac.spec` + `build_mac.sh` |
-| Linux | yes (deps are cross-platform) | **no packaging script in repo** |
+| Linux | yes (deps are cross-platform) | no in-repo build script — but the site **does** serve a Linux artifact |
 
 The dependency set is cross-platform by design:
 
@@ -35,9 +35,15 @@ Windows-specific code is guarded, not assumed:
 (`mss`); synthesising keyboard/mouse input is not. A macOS or Linux agent can be
 viewed but not driven. This is existing behaviour, unchanged by the migration.
 
+The **download page has slots for all three** — `prebuilt_installer()`,
+`prebuilt_mac()` and `prebuilt_linux()` glob `server/public/downloads/` for an `.exe`,
+a `.dmg`/mac `.zip`, and a Linux `.tar.gz`/`.AppImage` respectively
+(`marketing-content.md` §6). A Linux artifact must currently be built outside the repo
+and dropped in.
+
 None of this is affected by replacing the PHP server — but the audit records it so
 "the agent works on Linux, Windows and Mac" is understood precisely: **the code runs
-on all three; shipped installers exist for two.**
+on all three, the site serves all three, and in-repo build scripts exist for two.**
 
 ## 2. Client shape
 
