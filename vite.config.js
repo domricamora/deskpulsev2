@@ -7,6 +7,13 @@ import tailwindcss from '@tailwindcss/vite';
 // used: the Content-Security-Policy sets font-src 'self', so a third-party font
 // host would be blocked outright. See docs/migration/ui-inventory.md §3.
 export default defineConfig({
+    // Emit asset URLs *inside* built CSS relative to the stylesheet rather than to
+    // the domain root. The app has to work from a subdirectory — dev serves it at
+    // /deskpulsev2/public/ — and an absolute /build/... path 404s there.
+    // The <link>/<script> tags are unaffected: laravel-vite-plugin builds those from
+    // the manifest and APP_URL. See docs/migration/architecture.md §2.
+    base: './',
+
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.js'],
