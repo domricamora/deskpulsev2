@@ -1,0 +1,75 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment / secrets
+.env
+*.local
+server/config.php
+config.php
+
+# Database / instance data
+server/instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploaded data
+screenshots/
+server/public/uploads/
+server/static/screenshots/
+
+# Payroll import spreadsheets (contain employee PII — never commit)
+sheets/
+
+# Private storage: generated payslip PDFs (salary data — never commit, never serve)
+server/storage/
+
+# Agent local state
+agent/.deskpulse/
+*.deskpulse.json
+
+# PyInstaller / packaging
+build/
+dist/
+*.spec.bak
+Output/
+*.exe
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+server/public/downloads/
+agent/packaging/icon.ico
+agent/packaging/icon.icns
+agent/packaging/icon_1024.png
+ui-ux-pro-max-skill/
+server/install/*.sql
+
+# Build artifacts
+*.zip
+
+# Claude Code local project data (skills, plans, memory)
+.claude/
+
+# PHP session storage (private per-app directory)
+server/sessions/
+sessions/
+
+# Local MCP tooling config (Playwright etc.)
+.mcp.json
+
+# Playwright MCP session transcripts (tool output, not project content)
+.playwright-mcp/
+
+# Ad-hoc debug screenshots from browser testing
+download-page*.png

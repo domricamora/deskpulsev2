@@ -1,0 +1,18 @@
+# DeskPulse desktop agent (Python). The server is PHP — see server/.
+#
+# Install into a venv:
+#   py -m venv .venv
+#   .venv\Scripts\python -m pip install -r requirements.txt
+
+PySide6==6.8.1          # desktop GUI (Qt) + system tray
+requests==2.32.3        # HTTP to the PHP webhook endpoints
+pynput==1.7.7           # keyboard/mouse activity + idle detection
+mss==9.0.2              # fast cross-platform screenshots
+Pillow==11.0.0          # image encode / optional blur
+psutil==6.1.0           # running-task (process) snapshots
+pygetwindow==0.0.9      # active window title (cross-platform)
+pywin32==308 ; sys_platform == "win32"   # robust active-window on Windows
+
+# Build-only (packaging into an installer).
+# Inno Setup is a separate external tool: https://jrsoftware.org/isdl.php
+pyinstaller==6.11.1

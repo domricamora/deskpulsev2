@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48" width="220" height="48" role="img" aria-label="DeskPulse">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#2dd4bf"/>
+    </linearGradient>
+  </defs>
+  <!-- square mark (sharp/tech) -->
+  <rect x="2" y="8" width="32" height="32" rx="0" fill="url(#g)"/>
+  <!-- heartbeat / ECG line -->
+  <path d="M7 25 h4.5 l2.2 -7 l3.4 13.5 l2.6 -9 l1.8 4 h5.5" fill="none" stroke="#06121f" stroke-width="2.4"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- wordmark -->
+  <text x="44" y="32" font-family="'Plus Jakarta Sans',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif"
+        font-size="22" font-weight="800" fill="#e9eef8">Desk<tspan fill="#2dd4bf">Pulse</tspan></text>
+</svg>

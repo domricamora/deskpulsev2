@@ -1,0 +1,91 @@
+name: Build DeskPulse agent (Windows + macOS)
+
+# Builds native installers for both platforms. Run manually (Actions → Run workflow)
+# or by pushing a tag like v1.0.0 — the installers are uploaded as artifacts (and
+# attached to a GitHub Release on a tag).
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Generate icon
+        run: python agent/packaging/make_icon.py
+      - name: Build app (PyInstaller)
+        run: pyinstaller agent/packaging/deskpulse.spec --noconfirm --clean
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+      - name: Compile installer
+        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" agent\packaging\installer.iss'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DeskPulse-Windows-Setup
+          path: dist/installer/*.exe
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install -r requirements.txt
+      - name: Install create-dmg
+        run: brew install create-dmg || true
+      - name: Build .app + .dmg
+        run: |
+          chmod +x agent/packaging/build_mac.sh
+          ./agent/packaging/build_mac.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DeskPulse-macOS-dmg
+          path: dist/*.dmg
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install system libs for PySide6
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libxkbcommon0 libgl1
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install -r requirements.txt
+      - name: Generate icon
+        run: python3 agent/packaging/make_icon.py
+      - name: Build app (PyInstaller, onedir)
+        run: pyinstaller agent/packaging/deskpulse.spec --noconfirm --clean
+      - name: Package tarball
+        run: |
+          cd dist && tar -czf DeskPulse-Linux-x86_64.tar.gz DeskPulse && cd ..
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DeskPulse-Linux-tarball
+          path: dist/DeskPulse-Linux-x86_64.tar.gz
+
+  release:
+    needs: [windows, macos, linux]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts }
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
