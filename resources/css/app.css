@@ -1119,3 +1119,8 @@ dl.kv dd{margin:0;font-size:.9rem}
     /* timesheets.php: the Add more / Submit row under the entry form (Phase 11) */
     .adj-actions { margin-top: 0.6rem; }
 }
+
+@layer components {
+    /* payroll.php: a deduction cell, shown in the alert colour (Phase 13) */
+    .negative { color: var(--bad); }
+}

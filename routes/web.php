@@ -14,6 +14,7 @@ use App\Http\Controllers\Dashboard\ClientController;
 use App\Http\Controllers\Dashboard\EfficiencyController;
 use App\Http\Controllers\Dashboard\LiveController;
 use App\Http\Controllers\Dashboard\OverviewController;
+use App\Http\Controllers\Dashboard\PayrollController;
 use App\Http\Controllers\Dashboard\ScreenshotController;
 use App\Http\Controllers\Dashboard\SessionController;
 use App\Http\Controllers\Dashboard\TaskController;
@@ -190,6 +191,14 @@ Route::middleware(['auth', 'password.changed', 'tenant'])->group(function () {
         Route::middleware('cap:live')->group(function () {
             Route::get('/app/live', [LiveController::class, 'index'])->name('live');
             Route::get('/app/live/data', [LiveController::class, 'data'])->name('live.data');
+        });
+
+        /* ── Payroll (Phase 13) ──────────────────────────────────────────── */
+
+        // Every money figure on this page comes from PayRun, which the payslip
+        // PDF and the salary run also read, so the three cannot disagree.
+        Route::middleware('cap:payroll')->group(function () {
+            Route::get('/app/payroll', [PayrollController::class, 'show'])->name('payroll');
         });
 
         /* ── Billing (Phase 12) ──────────────────────────────────────────── */
