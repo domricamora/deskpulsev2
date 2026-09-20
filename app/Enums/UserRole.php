@@ -27,17 +27,27 @@ enum UserRole: string
     case Member       = 'member';
     case ClientViewer = 'client_viewer';
 
-    /** Human label, as the legacy UI renders it. */
+    /**
+     * Human label, transcribed from role_label() in server/src/helpers.php.
+     *
+     * That function is what the sidebar footer and every Team page role tag
+     * render, so these strings are user-visible and must match it exactly.
+     *
+     * Two other label maps exist in the legacy code — in the onboarding
+     * template and in messaging.php — which say "HR admin" where this says
+     * "HR manager". They are page-local and are ported with their own pages;
+     * this is the general one.
+     */
     public function label(): string
     {
         return match ($this) {
             self::SuperAdmin   => 'Super admin',
             self::ClientAdmin  => 'Company admin',
             self::Manager      => 'Team manager',
-            self::HrManager    => 'HR admin',
+            self::HrManager    => 'HR manager',
             self::ItAdmin      => 'IT admin',
             self::Member       => 'Employee',
-            self::ClientViewer => 'Client portal',
+            self::ClientViewer => 'Client / viewer',
         };
     }
 

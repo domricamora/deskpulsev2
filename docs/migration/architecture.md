@@ -157,6 +157,24 @@ and receipts to private storage *because* of it. See `screenshots.md` and
 | `attribution_capture()` | middleware |
 | PDO helpers | Eloquent |
 
+### Framework behaviour the legacy code does not have
+
+Laravel runs middleware on every request that PHP's `$_POST` never did. These
+are not bugs to fix; they are differences to port against, and each one has
+already changed a result during the migration.
+
+| Middleware | What changes | Where it bit |
+|---|---|---|
+| `ConvertEmptyStringsToNull` | A blank form field arrives as `null`, not `''` | A legacy `($_POST['x'] ?? '') !== ''` test becomes true for every blank field. On the Clients page that wrote `0.00` into a contract instead of inheriting the client's rate. Cast to string before comparing: `(string) $request->input('x', '') !== ''` |
+| `TrimStrings` | Leading and trailing whitespace is gone before the handler sees it | A `trim()` in ported code is now redundant, never wrong. Keep it — it documents the intent and survives the middleware being skipped for a route |
+
+Eloquent adds a third, of the same shape: an attribute **cast** hands back an
+object where PDO handed back a string. `organizations.pay_cycle_anchor` is cast
+to a `Carbon`, and concatenating it with `' 12:00:00'` the way the legacy code
+concatenates the raw column produced `"2026-01-05 00:00:00 12:00:00"` — which
+`strtotime()` parses into a different date and silently shifts every pay period
+by days. Port date arithmetic against `getRawOriginal()`, or cast explicitly.
+
 ## 8. Required tests
 
 - App serves correctly from a subdirectory (`/deskpulsev2/...`), not just a root domain.

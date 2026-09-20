@@ -18,22 +18,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-function org(array $attributes = []): Organization
-{
-    return Organization::create(array_merge(['name' => 'Tenant', 'status' => 'approved'], $attributes));
-}
-
-function member(Organization $o, UserRole $role = UserRole::Member): User
-{
-    return User::create([
-        'org_id'        => $o->id,
-        'name'          => $role->value,
-        'email'         => $role->value . '-' . uniqid() . '@example.test',
-        'password_hash' => bcrypt('secret'),
-        'role'          => $role,
-    ]);
-}
-
 test('a super admin lands on the platform console when not acting as anyone', function () {
     $platform = org(['name' => 'DeskPulse platform']);
 

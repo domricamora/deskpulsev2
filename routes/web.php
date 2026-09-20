@@ -8,6 +8,10 @@ use App\Http\Controllers\Auth\OAuthController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\PendingController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Dashboard\ClientController;
+use App\Http\Controllers\Dashboard\OverviewController;
+use App\Http\Controllers\Dashboard\TaskController;
+use App\Http\Controllers\Dashboard\TeamController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -110,5 +114,32 @@ Route::middleware(['auth', 'password.changed', 'tenant'])->group(function () {
 
             return redirect('/app/overview');
         })->name('app');
+
+        /* ── Core dashboard (Phase 6) ────────────────────────────────────── */
+
+        // Login only. What each role sees is decided by Visibility::userIds()
+        // and by capability checks inside the views, not at the route — see
+        // docs/migration/authorization.md §2.
+        Route::get('/app/overview', [OverviewController::class, 'show'])->name('overview');
+
+        // Also login only. Whether the page is editable is decided by ROLE
+        // inside the controller: tasks belong to the person doing the work, and
+        // no capability grants editing someone else's.
+        Route::get('/app/tasks', [TaskController::class, 'show'])->name('tasks');
+        Route::post('/app/tasks', [TaskController::class, 'update']);
+
+        // view_all opens the page; users_manage, profiles_manage and
+        // set_pay_rate decide what may be changed on it, inside the controller.
+        Route::middleware('cap:view_all')->group(function () {
+            Route::get('/app/team', [TeamController::class, 'show'])->name('team');
+            Route::post('/app/team', [TeamController::class, 'update']);
+        });
+
+        // Clients and their contracts. No read-only variant: a role that can
+        // open this page can change everything on it.
+        Route::middleware('cap:clients_manage')->group(function () {
+            Route::get('/app/clients', [ClientController::class, 'show'])->name('clients');
+            Route::post('/app/clients', [ClientController::class, 'update']);
+        });
     });
 });

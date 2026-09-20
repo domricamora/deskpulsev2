@@ -49,6 +49,36 @@ expect()->extend('toBeOne', function () {
 |
 */
 
+/**
+ * A tenant. Approved by default, because that is what every gate downstream
+ * expects and a test that wants a pending one says so.
+ */
+function org(array $attributes = []): \App\Models\Organization
+{
+    return \App\Models\Organization::create(
+        array_merge(['name' => 'Tenant', 'status' => 'approved'], $attributes)
+    );
+}
+
+/**
+ * Somebody in that tenant. The email is unique per call because `users.email`
+ * is unique across every organization rather than within one, and several
+ * tests create the same role twice.
+ */
+function member(
+    \App\Models\Organization $organization,
+    \App\Enums\UserRole $role = \App\Enums\UserRole::Member,
+    array $attributes = []
+): \App\Models\User {
+    return \App\Models\User::create(array_merge([
+        'org_id'        => $organization->id,
+        'name'          => $role->value,
+        'email'         => $role->value . '-' . uniqid() . '@example.test',
+        'password_hash' => bcrypt('secret'),
+        'role'          => $role,
+    ], $attributes));
+}
+
 /** Absolute path to the legacy application, which remains the behavioural reference. */
 function legacy_path(string $rel = ''): string
 {

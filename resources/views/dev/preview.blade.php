@@ -1,23 +1,17 @@
 {{--
-    Phase 2 scaffold check — a living style guide.
+    Scaffold check — a living style guide.
 
-    This exists so the design foundation can be verified by eye before Phase 18
-    builds pages on top of it: the tokens, typography, icon set and app shell.
-    It is NOT part of the product. Phase 6 replaces this route with the real
-    dashboard and Phase 18 with the marketing home.
+    It exists so the design foundation can be verified by eye: the tokens,
+    typography and icon set. It is NOT part of the product; Phase 14 replaces
+    this route with the marketing home.
+
+    Phase 6 gave layouts.app its real, capability-driven sidebar, so this page
+    no longer supplies one — the shell renders empty here because nobody is
+    signed in, which is the correct answer for a public page.
 --}}
 @extends('layouts.app')
 
 @section('title', 'Scaffold check')
-
-@section('nav')
-    <div class="nav-group">
-        <div class="nav-group-label">Phase 2</div>
-        <a href="#tokens"><x-icon name="overview" /><span class="lbl">Tokens</span></a>
-        <a href="#type"><x-icon name="payslip" /><span class="lbl">Typography</span></a>
-        <a href="#icons"><x-icon name="image" /><span class="lbl">Icons</span></a>
-    </div>
-@endsection
 
 @section('sidebar-foot')
     Laravel {{ app()->version() }} · PHP {{ PHP_VERSION }}

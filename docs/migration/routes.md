@@ -211,6 +211,62 @@ cost-calculator, and the platform console beyond two paths.
 - `/app/timesheets` shows only `visible_user_ids()` rows for each role.
 - The app serves correctly from a subdirectory.
 
+## 11. Phase 6 as built — deviations and deferrals
+
+Five routes, and the app shell they all hang off.
+
+| Route | Guard | Controller |
+|---|---|---|
+| `/app/overview` | login | `Dashboard\OverviewController` |
+| `/app/tasks` (GET, POST) | login | `Dashboard\TaskController` |
+| `/app/team` (GET, POST) | `cap:view_all` | `Dashboard\TeamController` |
+| `/app/clients` (GET, POST) | `cap:clients_manage` | `Dashboard\ClientController` |
+
+GET and POST are separate registrations to the same controller, as §8 requires.
+
+### Layer 2, as implemented
+
+`App\Support\Visibility` is `visible_user_ids()` and friends; the views branch
+on capabilities directly. Three pages narrow purely through it:
+
+- `/app/overview` — a member gets a personal workspace, a manager the roster
+- `/app/tasks` — a member owns the list, everybody else reads it
+- `/app/team` — the table's COLUMNS change with the viewer
+
+The Team page is the clearest case: an HR admin sees a Pay column and no Bill
+column, because `set_pay_rate` and `view_rates` are held by different roles.
+`tables.js` reads columns from the rendered `<thead>` for exactly this reason.
+
+### Deviations
+
+| # | Legacy | Ported | Why |
+|---|---|---|---|
+| A | Inline `onsubmit="return confirm(…)"` and `onchange="this.form.submit()"` | `data-confirm` / `data-autosubmit`, handled in `resources/js/dashboard.js` | Decision D13 rules out `script-src 'unsafe-inline'`. The prompts are word for word the originals |
+| B | Six `style="…"` attributes across the three templates | Six classes in `app.css`, same values | Same reason, for `style-src` |
+| C | `nav_context()` renders the sidebar per page | A view composer on `layouts.app` | The legacy merge is per page and a new page that forgets it silently loses its badges |
+| D | Chart.js as a 205 KB vendored UMD file | An npm dependency bundled by Vite | Same library, same version line, still no CDN. `charts.js` itself is verbatim |
+
+### Deferred, with their destinations
+
+`nav_context()` does six things this phase does not:
+
+| Legacy call | Lands in |
+|---|---|
+| `close_stale_sessions()` | Phase 9 — needs the monitoring pipeline |
+| `recompute_pending_overtime()` | Phase 9 — same, and blocked on decision D2 |
+| onboarding redirect (`client_admin`, `manager`) | With `/app/onboarding` |
+| welcome redirect (everyone else) | With `/app/welcome` |
+| `mail_maybe_flush()` | Phase 14, with the mailer |
+| `notices_for_user()` | With the messaging pages |
+
+The two first-run redirects are deliberately absent rather than stubbed: their
+destinations do not exist, so porting them would send a brand-new organization
+to a 404 on its first sign-in.
+
+Three routes these pages link to are not built yet and are reached by typing or
+by a role redirect: `/app/platform` (Phase 20), `/app/agents` (the client
+portal's home) and `/app/export.csv` (Phase 11).
+
 ## 10. Migration risks
 
 | Risk | Severity | Note |

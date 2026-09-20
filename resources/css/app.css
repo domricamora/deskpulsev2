@@ -172,26 +172,23 @@
     }
 }
 
-/* ───────────────────── Shell scaffolding (Phase 2) ─────────────────────
-   Minimal structure so the base layouts render recognizably. The full ~200-class
-   component set is ported page by page in Phase 18, in the order given by the
-   migration plan §72. See docs/migration/ui-inventory.md §7.
+/* ─────────────────── App shell and dashboard (Phase 6) ───────────────────
+   Ported from server/public/assets/css/deskpulse.css, verbatim. This replaces
+   the Phase 2 approximation of the shell: the sidebar, panels, stat cards,
+   period switch, data tables, the table toolbar tables.js builds, the agent
+   modal and the responsive drawer are all the originals, because the standing
+   requirement is that the app look and behave exactly as it does today.
+
+   Three marketing selectors (.hero, .features, .landing .split) ride along
+   inside the shared media queries. They are dead until Phase 14 ports those
+   pages, and splitting them out would mean re-deriving the breakpoints by hand.
+
+   Two additions, both carried over from Phase 2 and neither a visual change:
+   .brand-mark / .brand-mark-accent replace the brand's inline style attribute,
+   and .dp-icon sizes an icon used outside the sidebar. Inline styles would
+   need style-src 'unsafe-inline', which decision D13 rules out.
 */
 @layer components {
-    /* Brand wordmark — "Desk" in ink, "Pulse" in teal. Values taken verbatim
-       from the legacy sidebar markup. */
-    .brand {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        text-decoration: none;
-        padding: 1rem;
-    }
-
-    .brand:hover {
-        text-decoration: none;
-    }
-
     .brand-mark {
         font-family: var(--font-display);
         font-weight: 800;
@@ -204,95 +201,511 @@
         color: var(--color-teal);
     }
 
-    /* Two-column shell: fixed sidebar, fluid main. */
-    body.app {
-        display: grid;
-        grid-template-columns: 250px 1fr;
-        min-height: 100vh;
-    }
-
-    .sidebar {
-        background: var(--color-bg-2);
-        border-right: 1px solid var(--color-line);
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
-    }
-
-    .sidebar nav {
-        flex: 1;
-        padding: 0 0.5rem;
-    }
-
-    .side-foot {
-        padding: 1rem;
-        border-top: 1px solid var(--color-line);
-        color: var(--color-muted);
-        font-size: 0.85rem;
-    }
-
-    .main {
-        min-width: 0; /* or a wide table refuses to shrink and the page scrolls sideways */
-        padding: 1.25rem;
-    }
-
-    .topbar {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        min-height: 2.5rem;
-    }
-
-    /* Flash — taken verbatim from the legacy stylesheet. The modifier is a
-       second class (.flash.error), not a compound name, because that is what
-       the ported templates emit. */
-    .flash {
-        padding: 0.7rem 1rem;
-        border-radius: 3px;
-        margin: 1rem 0;
-        background: rgb(59 130 246 / 0.12);
-        border: 1px solid rgb(59 130 246 / 0.3);
-        color: #cfe0ff;
-    }
-
-    .flash.error {
-        background: rgb(248 113 113 / 0.12);
-        border-color: rgb(248 113 113 / 0.35);
-        color: #fecdd3;
-    }
-
-    .flash.success {
-        background: rgb(52 211 153 / 0.12);
-        border-color: rgb(52 211 153 / 0.35);
-        color: #bbf7d6;
-    }
-
-    .flash.center {
-        max-width: 420px;
-        margin: 1rem auto;
-    }
-
-    .acting-banner {
-        border: 1px solid var(--color-line-2);
-        border-radius: var(--radius-dp);
-        padding: 0.6rem 0.9rem;
-        margin: 0.75rem 0;
-        background: var(--color-card);
-    }
-
     .dp-icon {
         width: 18px;
         height: 18px;
         flex: none;
     }
+}
 
-    /* Single-column below the tablet breakpoint; the slide-in sidebar behaviour
-       lands with the rest of the shell in Phase 18. */
-    @media (max-width: 900px) {
-        body.app {
-            grid-template-columns: 1fr;
-        }
-    }
+/* ── App shell ── */
+body.app{display:flex;min-height:100vh;background:
+  radial-gradient(1100px 500px at 85% -10%,rgba(45,212,191,.06),transparent 60%),
+  radial-gradient(1000px 460px at 0% 0%,rgba(59,130,246,.08),transparent 55%),var(--bg)}
+.sidebar{width:250px;flex:none;background:linear-gradient(180deg,#0c1424,#080d18);
+  border-right:1px solid var(--line);color:var(--ink);display:flex;flex-direction:column;
+  padding:.9rem .7rem;position:sticky;top:0;height:100vh;
+  box-shadow:inset -1px 0 0 rgba(255,255,255,.02),2px 0 18px rgba(0,0,0,.4)}
+.sidebar .brand{color:var(--ink);font-weight:800;font-size:1.18rem;display:flex;align-items:center;gap:.55rem;
+  padding:.45rem .55rem 1rem}
+.sidebar .brand img.logo{height:30px;width:auto;display:block}
+/* Company logo sits below the DeskPulse brand, spanning 90% of the sidebar width. */
+.sidebar .org-brand{width:90%;margin:0 auto .9rem;padding-bottom:.9rem;border-bottom:1px solid var(--line)}
+.sidebar .org-brand img{display:block;width:100%;height:auto;object-fit:contain}
+.logo-preview{display:inline-flex;align-items:center;justify-content:center;padding:.6rem .8rem;margin-bottom:.6rem;
+  background:var(--card);border:1px solid var(--line);border-radius:3px}
+.logo-preview img{max-height:64px;max-width:280px;width:auto;height:auto;object-fit:contain;display:block}
+.sidebar nav{display:flex;flex-direction:column;gap:.06rem;flex:1;overflow-y:auto;min-height:0}
+.nav-group{margin-top:.85rem}
+.nav-group:first-of-type{margin-top:.1rem}
+.nav-group-label{font-size:.67rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--muted);padding:.25rem .75rem .3rem}
+.sidebar nav a{color:#aeb9d0;padding:.5rem .7rem;border-radius:3px;display:flex;align-items:center;
+  gap:.6rem;font-size:.92rem;font-weight:500;border:1px solid transparent;position:relative;transition:background .16s,color .16s,box-shadow .16s}
+.sidebar nav a svg{width:18px;height:18px;flex:none;color:#6f7d99;transition:color .16s}
+.sidebar nav a .lbl{flex:1;min-width:0}
+.sidebar nav a:hover{background:rgba(59,130,246,.10);color:#fff;text-decoration:none;
+  border-color:rgba(59,130,246,.2)}
+.sidebar nav a:hover svg{color:var(--teal)}
+.sidebar nav a.on{background:linear-gradient(90deg,rgba(45,212,191,.14),rgba(59,130,246,.10));color:#fff;font-weight:600;
+  border-color:rgba(45,212,191,.28);box-shadow:var(--glow-teal)}
+.sidebar nav a.on::before{content:"";position:absolute;left:-.7rem;top:.35rem;bottom:.35rem;width:3px;border-radius:3px;background:var(--grad-brand)}
+.sidebar nav a.on svg{color:var(--teal)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--grad-brand);
+  box-shadow:0 0 0 4px rgba(45,212,191,.14),0 0 12px rgba(45,212,191,.6);display:inline-block}
+.badge{background:linear-gradient(180deg,#fb7185,var(--bad));color:#fff;border-radius:4px;font-size:.7rem;
+  font-weight:700;padding:.05rem .45rem;margin-left:auto;
+  box-shadow:0 1px 2px rgba(225,29,72,.5)}
+.side-foot{border-top:1px solid var(--line);padding-top:.7rem;margin-top:.5rem;display:flex;align-items:center;gap:.6rem}
+.side-foot .who{font-size:.82rem;color:var(--ink);flex:1;line-height:1.25}
+.side-foot .who small{color:var(--muted)}
+.main{flex:1;min-width:0;padding:1.2rem 1.8rem 3rem}
+.topbar{display:flex;align-items:center;gap:.7rem;margin:.1rem 0 1.15rem;min-height:42px}
+.topbar h1{font-size:1.4rem;margin:0;flex:1;min-width:0}
+.nav-toggle{display:none;align-items:center;justify-content:center;width:42px;height:42px;flex:none;
+  border:1px solid var(--line-2);border-radius:3px;background:var(--card);
+  color:var(--ink);cursor:pointer;box-shadow:var(--shadow)}
+.nav-toggle:active{box-shadow:var(--inset)}
+.nav-toggle svg{width:20px;height:20px}
+.nav-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:90;backdrop-filter:blur(2px)}
+.content{max-width:1100px;animation:contentin .4s ease both}
+@keyframes contentin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* Panels & stats — dark glass surfaces */
+.panel{background:linear-gradient(180deg,var(--card),var(--bg-2));border:1px solid var(--line);border-radius:var(--radius);
+  padding:1.1rem 1.2rem;margin-bottom:1.2rem;box-shadow:var(--shadow)}
+.panel h3{font-size:1.05rem}
+/* min-width:0 on the children is required: a grid item defaults to min-width:auto,
+   so a track refuses to shrink below its content's min-content width. A panel
+   holding a wide table therefore pushed the whole grid past the viewport instead of
+   letting the table scroll inside its own container. Same reason panels get it too. */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+.two-col>*{min-width:0}
+.panel{min-width:0}
+.stat-row{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem}
+/* min-width is sized so a full money value ("USD 11,057.60") fits without being
+   clipped by overflow:hidden — money() uses a non-breaking space, so the value
+   cannot wrap out of trouble the way ordinary text can. */
+.stat{background:linear-gradient(180deg,var(--card),var(--bg-2));border:1px solid var(--line);border-radius:var(--radius);
+  padding:.85rem 1.1rem;flex:1 1 200px;min-width:200px;box-shadow:var(--shadow);position:relative;overflow:hidden;
+  transition:transform .18s ease,box-shadow .2s ease}
+.stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--grad-brand);opacity:.9}
+.stat:hover{transform:translateY(-2px);box-shadow:var(--shadow),var(--glow-teal)}
+.stat .lbl{display:block;color:var(--muted);font-size:.8rem;text-transform:uppercase;letter-spacing:.03em}
+.stat b{font-size:1.2rem;display:block;line-height:1.25}
+/* A vw-based size was wrong here: a wider viewport fits MORE cards per row, so each
+   card gets narrower while a vw font grows. Fixed size + a min-width that provably
+   fits the longest real value instead. */
+
+/* Period switch */
+.period-switch{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin-bottom:1rem}
+.period-switch a{padding:.35rem .85rem;border-radius:4px;background:var(--card);
+  color:var(--muted);border:1px solid var(--line-2)}
+.period-switch a.on{background:var(--grad-brand-v);color:#fff;border-color:var(--brand-dk);
+  box-shadow:0 2px 12px rgba(37,99,235,.4)}
+.period-switch a:hover{text-decoration:none;color:var(--ink)}
+.period-custom{display:inline-flex;align-items:center;gap:.3rem;margin:0 0 0 .2rem}
+.period-custom input[type=date]{margin:0;padding:.3rem .5rem;font-size:.85rem;width:auto;
+  border-radius:4px;background:var(--card);color:var(--ink);border:1px solid var(--line-2)}
+/* Custom from → to date-range picker (paired with period=range) */
+.period-range{padding:.15rem .3rem;border:1px solid var(--line-2);border-radius:6px;background:var(--card)}
+.period-range.on{border-color:var(--brand-dk);box-shadow:0 2px 12px rgba(37,99,235,.35)}
+.period-range .rng-sep{color:var(--muted);font-size:.85rem}
+.period-range .btn.sm{padding:.3rem .7rem;font-size:.85rem}
+/* ◀ label ▶ period navigator */
+.period-nav{display:inline-flex;align-items:center;gap:.15rem;margin-left:.25rem;
+  border:1px solid var(--line-2);border-radius:6px;background:var(--card);padding:.1rem .2rem}
+.period-switch .period-nav a.pnav{padding:.25rem .5rem;border:0;background:none;
+  color:var(--muted);font-size:.8rem;line-height:1.4;border-radius:4px}
+.period-switch .period-nav a.pnav:hover{background:var(--card-2);color:var(--ink)}
+.period-label{padding:.25rem .55rem;font-size:.85rem;color:var(--ink);white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+.period-label[data-now]{color:var(--brand-lt);font-weight:600}
+.period-switch a.pnav-today{padding:.3rem .7rem;font-size:.82rem}
+
+/* Universal table toolbar + column filters (assets/js/tables.js) */
+.dp-tbar{display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;margin:0 0 .5rem}
+.dp-tbar .dp-tsearch{width:auto;flex:0 1 240px;margin:0;padding:.3rem .55rem;font-size:.85rem;
+  border-radius:4px;background:var(--card);border:1px solid var(--line-2)}
+.dp-tbar .dp-tcount{font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.dp-tbar .dp-tcount.on{color:var(--brand-lt);font-weight:600}
+.dp-tbar .btn.sm.dp-tf.on{background:var(--grad-brand-v);color:#fff;border-color:var(--brand-dk)}
+.dp-tbar .dp-tcsv{margin-left:auto}
+/* Hint that a table scrolls sideways — shown by tables.js only when it actually does. */
+.dp-tbar .dp-tscroll{font-size:.75rem;color:var(--muted);display:none;align-items:center;gap:.25rem}
+.dp-tbar .dp-tscroll.on{display:inline-flex}
+tr.dp-filter-row{display:none}
+table.dp-show-filters tr.dp-filter-row{display:table-row}
+tr.dp-filter-row th{padding:.3rem .35rem;background:var(--card);border-bottom:1px solid var(--line-2)}
+tr.dp-filter-row input,tr.dp-filter-row select{margin:0;width:100%;min-width:0;padding:.25rem .4rem;
+  font-size:.8rem;border-radius:3px;background:#0c1322;border:1px solid var(--line-2);box-shadow:none}
+tr.dp-row-hidden{display:none}
+table.data th.dp-sortable{cursor:pointer;user-select:none;position:relative;padding-right:1.1rem}
+table.data th.dp-sortable:hover{color:var(--ink)}
+/* Anchored to the first line, not the cell's vertical centre — headers wrap onto
+   two lines and a centred arrow ended up floating beside the second line. */
+table.data th.dp-sortable::after{content:'';position:absolute;right:.35rem;top:.72rem;
+  border:4px solid transparent;border-top-color:var(--line-2)}
+table.data th.sort-asc::after{top:.5rem;border-top-color:transparent;border-bottom-color:var(--brand-lt)}
+table.data th.sort-desc::after{border-top-color:var(--brand-lt)}
+
+/* Dismissible in-app notices */
+.notice-banner{display:flex;gap:.8rem;align-items:flex-start;margin:0 0 .8rem;padding:.7rem .9rem;
+  border-radius:6px;border:1px solid var(--line-2);background:var(--card);font-size:.9rem}
+.notice-banner .nb-body{flex:1}
+.notice-banner.lvl-success{border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.08)}
+.notice-banner.lvl-warn{border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.08)}
+.notice-banner.lvl-urgent{border-color:rgba(248,113,113,.55);background:rgba(248,113,113,.1)}
+.notice-banner form{margin:0}
+
+/* Tables
+   Wide tables scroll INSIDE their own container at every width. Previously the
+   only containment was a `display:block;overflow-x:auto` rule below 880px, so on
+   anything between 881px and ~1340px (i.e. most laptops) a 9–12 column table
+   pushed the whole page sideways. tables.js wraps every table.data in
+   .dp-table-wrap; the media-query fallback below covers a no-JS page. */
+.dp-table-wrap{
+  overflow-x:auto;
+  overflow-y:hidden;
+  max-width:100%;
+  scrollbar-width:thin;
+  -webkit-overflow-scrolling:touch;
+  /* Edge shadows that appear only when there is more table to scroll to.
+     The `local` layers scroll away with the content; the `scroll` layers stay put. */
+  background-image:
+    linear-gradient(to right,var(--card-2),rgba(11,17,32,0)),
+    linear-gradient(to left,var(--card-2),rgba(11,17,32,0)),
+    radial-gradient(farthest-side at 0 50%,rgba(0,0,0,.5),rgba(0,0,0,0)),
+    radial-gradient(farthest-side at 100% 50%,rgba(0,0,0,.5),rgba(0,0,0,0));
+  background-position:0 0,100% 0,0 0,100% 0;
+  background-repeat:no-repeat;
+  background-size:26px 100%,26px 100%,12px 100%,12px 100%;
+  background-attachment:local,local,scroll,scroll;
+}
+.dp-table-wrap::-webkit-scrollbar{height:9px}
+.dp-table-wrap::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:5px}
+.dp-table-wrap::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+/* Fill the container when the table is narrower than it. */
+.dp-table-wrap>table.data{min-width:100%}
+
+table.data{width:100%;border-collapse:collapse;font-size:.9rem}
+table.data th,table.data td{text-align:left;padding:.55rem .5rem;border-bottom:1px solid var(--line);vertical-align:top}
+table.data th{color:var(--muted);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.03em}
+table.data tbody tr:hover{background:rgba(59,130,246,.05)}
+/* Long prose wraps at spaces; only genuinely unbreakable strings (emails, UUIDs)
+   are broken mid-token. Forcing nowrap on the whole table (the old mobile rule)
+   made text-heavy tables ~1200px wide for no reason and defeated .trunc, but
+   `anywhere` was too blunt the other way — it split headers as "EMPLOYME/NT".
+   Money and durations hold together via a non-breaking space from money()/fmt_hms(). */
+table.data td{overflow-wrap:break-word}
+table.data th{overflow-wrap:normal;word-break:normal;hyphens:none}
+table.data code,table.data .tag,table.data .status,table.data time,
+table.data .nowrap{white-space:nowrap}
+/* Emails, tokens and Wise recipient ids: break rather than widen the column. */
+table.data td small,table.data td .brk{overflow-wrap:anywhere}
+.trunc{max-width:min(340px,38vw);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Inline edit forms inside a cell must not dictate the column width. */
+table.data td>details>form,table.data td>details>.stack{min-width:min(300px,72vw);max-width:min(560px,86vw)}
+.tag{background:var(--card-2);border-radius:2px;padding:.1rem .45rem;font-size:.78rem;color:var(--muted)}
+.status{border-radius:2px;padding:.1rem .5rem;font-size:.78rem;text-transform:capitalize}
+.status.approved{background:rgba(52,211,153,.15);color:var(--good)}
+.status.pending{background:rgba(251,191,36,.15);color:var(--warn)}
+.status.rejected{background:rgba(248,113,113,.15);color:var(--bad)}
+
+/* Forms */
+label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:.7rem}
+input,select,textarea{display:block;width:100%;padding:.5rem .65rem;border:1px solid var(--line-2);border-radius:3px;
+  font-size:.95rem;background:#0c1322;color:var(--ink);margin-top:.2rem;box-shadow:var(--inset)}
+input::placeholder,textarea::placeholder{color:#5d6b85}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);box-shadow:var(--inset),0 0 0 3px var(--ring)}
+select option{background:#0c1322;color:var(--ink)}
+.stack label{margin-bottom:.8rem}
+/* Flex form rows must wrap and be allowed to shrink. Without flex-wrap and
+   min-width:0 the inputs' intrinsic min-width kept the row wider than the panel,
+   which pushed the whole page sideways on narrow screens. */
+.inline{display:flex;gap:.8rem;flex-wrap:wrap}
+.inline > label{flex:1 1 170px;min-width:0}
+.inline > label input,.inline > label select,.inline > label textarea{min-width:0}
+.row-form{display:flex;gap:.8rem;align-items:flex-end;flex-wrap:wrap}
+.row-form label{margin-bottom:0}
+.row-form .grow{flex:1;min-width:180px}
+label.check{display:flex;align-items:center;gap:.4rem}
+label.check input{width:auto;margin:0}
+
+/* Approvals */
+.approval{display:flex;justify-content:space-between;gap:1rem;border:1px solid var(--line);border-radius:3px;padding:.9rem;margin-bottom:.7rem;flex-wrap:wrap;background:var(--card)}
+.ap-info .note{font-style:italic;color:var(--muted);margin-top:.3rem}
+.ap-actions{display:flex;gap:.5rem;align-items:flex-start}
+.ap-actions input{margin:0}
+
+/* Chips / lists */
+.chips{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:.4rem}
+.chips li{background:var(--card-2);border-radius:2px;padding:.2rem .55rem;font-size:.82rem}
+ul.plain{list-style:none;padding:0;margin:0 0 .8rem}
+ul.plain li{padding:.25rem 0;border-bottom:1px solid var(--line)}
+ol.steps{margin:.3rem 0 .8rem;padding-left:1.2rem}
+ol.steps li{margin:.45rem 0}
+
+/* Screenshot grids */
+.shot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.7rem}
+.shot-grid.sm{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}
+.shot-grid a{display:block;border:1px solid var(--line);border-radius:3px;overflow:hidden;background:var(--card);position:relative;transition:border-color .16s,box-shadow .16s}
+.shot-grid a:hover{border-color:var(--teal);box-shadow:var(--glow-teal)}
+.shot-grid img{width:100%;height:110px;object-fit:cover;display:block}
+.shot-grid span{position:absolute;bottom:0;left:0;right:0;background:rgba(3,7,18,.82);color:#fff;font-size:.7rem;padding:.15rem .4rem}
+
+/* Live */
+.live-head{display:flex;justify-content:space-between;align-items:center}
+.live-dot,.dot.live{width:10px;height:10px;border-radius:50%;background:var(--good);display:inline-block;margin-right:.3rem;animation:pulse 1.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.55)}70%{box-shadow:0 0 0 8px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+.live-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.9rem;margin-top:1rem}
+.live-card{border:1px solid var(--line);border-radius:3px;padding:.9rem;background:var(--card)}
+.live-card.idleoff{opacity:.55}
+.live-card h4{display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem}
+.live-card .pill{font-size:.72rem;border-radius:4px;padding:.1rem .5rem}
+.live-card .pill.on{background:rgba(52,211,153,.15);color:var(--good)}
+.live-card .pill.off{background:var(--card-2);color:var(--muted)}
+.live-card .cur{font-size:.85rem;color:var(--muted);min-height:2.4em}
+.live-card .bar{height:6px;background:#0c1322;border-radius:2px;margin:.4rem 0;overflow:hidden;box-shadow:var(--inset)}
+.live-card .bar i{display:block;height:100%;background:var(--grad-brand)}
+.live-card img{width:100%;height:120px;object-fit:cover;border-radius:2px;margin-top:.5rem;border:1px solid var(--line)}
+.live-client{margin-top:1.4rem}
+.live-client-head{display:flex;align-items:center;gap:.6rem;padding-bottom:.4rem;border-bottom:2px solid var(--line)}
+.live-client-head h3{margin:0;font-size:1.05rem}
+.live-team{margin-top:.9rem}
+.live-team-head{font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+.live-team .live-grid{margin-top:.5rem}
+.live-client-sub{margin:.4rem 0 .4rem .9rem;padding-left:.6rem;border-left:2px solid var(--line)}
+.live-client-subhead{font-size:.72rem;font-weight:600;color:var(--teal);letter-spacing:.02em}
+.live-client-sub .live-grid{margin-top:.4rem}
+
+/* Super-admin acting banner + platform */
+.acting-banner{background:linear-gradient(180deg,rgba(251,191,36,.14),rgba(251,191,36,.08));border:1px solid rgba(251,191,36,.32);color:var(--warn);padding:.5rem 1rem;border-radius:3px;margin-bottom:1rem;font-size:.9rem}
+.acting-banner a{font-weight:600;color:var(--warn)}
+.btn.sm{padding:.3rem .6rem;font-size:.82rem}
+.actions-row{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;margin-bottom:.4rem}
+.actions-row form{display:inline}
+.bill-form{display:flex;gap:.3rem;align-items:center;flex-wrap:wrap;margin-top:.3rem}
+.bill-form input{margin:0}
+.inline-form{display:inline}
+.inline-form select{display:inline-block;width:auto;padding:.25rem .4rem;margin:0}
+.sidebar nav a[href$="platform"]{color:#c8d3ea}
+
+.share-url{font-size:.8rem;color:var(--muted);word-break:break-all;background:#0c1322;padding:.2rem .45rem;border-radius:2px;border:1px solid var(--line)}
+
+/* Agent detail page header */
+.detail-head{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
+.detail-head h2{margin:0;display:flex;align-items:center;gap:.5rem}
+.detail-head .period-switch{margin:0}
+
+/* Agent dashboard: activity/inactivity breakdown + workspace */
+.split-bar{height:14px;border-radius:3px;background:#0c1322;overflow:hidden;box-shadow:var(--inset);margin:.4rem 0 .55rem}
+.split-bar i{display:block;height:100%}
+.split-bar i.act{background:var(--grad-brand)}
+.split-legend{display:flex;gap:1.3rem;font-size:.85rem;color:var(--muted);margin-bottom:.7rem}
+.split-legend .sw{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:middle;margin-right:.35rem}
+.split-legend .sw.act{background:var(--brand)}.split-legend .sw.inact{background:#33415c}
+.mini-stats li{display:flex;justify-content:space-between;gap:1rem}
+.mini-stats b{font-variant-numeric:tabular-nums;color:var(--teal-lt)}
+.agent-workspace .ws-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem}
+.ws-item{display:flex;flex-direction:column;gap:.18rem}
+.ws-item .lbl{color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.04em}
+.ws-item b{font-size:1.02rem}
+.ws-linkrow{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.15rem}
+.pill.on{background:rgba(52,211,153,.15);color:var(--good)}
+.pill.off{background:var(--card-2);color:var(--muted)}
+.panel-head .pill.on,.panel-head .pill.off{border-radius:4px;padding:.15rem .6rem;font-size:.78rem;font-weight:600}
+
+/* Agents management page */
+.agent-meta{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:.4rem}
+.op-body h4{margin:.95rem 0 .35rem;font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:var(--teal)}
+.assign-form select[multiple]{min-width:240px;padding:.3rem .4rem}
+.task-list{display:flex;flex-direction:column;gap:.5rem;margin:.35rem 0 .8rem}
+.task-row{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;border:1px solid var(--line);
+  border-radius:3px;padding:.5rem .6rem;background:var(--card)}
+.task-edit{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;flex:1;margin:0}
+.task-edit input[type=text]{flex:1;min-width:180px}
+.task-edit select{width:auto;min-width:120px}
+.task-edit input,.task-edit select{margin:0}
+.task-del{margin:0}
+.nowrap{white-space:nowrap}
+.dlabel{display:flex;align-items:center;gap:.3rem;margin:0;font-size:.8rem;color:var(--muted)}
+.dlabel input{width:auto;margin:0}
+.dev-row{display:flex;justify-content:space-between;align-items:center;gap:1rem}
+.sched-h{font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--teal);margin:.6rem 0 .2rem}
+.sched-days{display:flex;flex-wrap:wrap;gap:.2rem .8rem;align-items:center;margin-top:.2rem}
+.sched-days .check{margin:0;font-weight:400}
+
+.team-block{border:1px solid var(--line);border-radius:3px;padding:.8rem;margin-bottom:.7rem;background:var(--card)}
+.team-block .chips{margin:.4rem 0}
+.team-block .chips form{display:inline}
+
+/* Interactive chart tooltip (timeline screenshot preview) */
+#dp-tip{position:fixed;z-index:9999;display:none;width:236px;background:var(--card);border:1px solid var(--line-2);
+  border-radius:3px;box-shadow:0 12px 34px rgba(0,0,0,.6);padding:.5rem;pointer-events:none;font-size:.8rem}
+#dp-tip .dp-tip-h{font-weight:700;color:var(--ink)}
+#dp-tip .dp-tip-app{color:var(--muted);margin:.15rem 0 .4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dp-tip img{width:100%;border-radius:2px;border:1px solid var(--line);display:block}
+
+/* Manual-entry rows */
+.adj-row{align-items:flex-end;border-bottom:1px dashed var(--line);padding-bottom:.6rem;margin-bottom:.6rem}
+.adj-row .remove-row{font-size:1rem;align-self:center}
+/* Reserve a stable drawing area so charts don't squash/distort before JS runs.
+   Once charts.js initializes, each canvas is moved inside a .dp-chart-wrap with
+   a fixed CSS height; Chart.js's responsive engine then owns the canvas's
+   actual width/height entirely (must not be set here too, or resizing compounds
+   into a runaway grow/distort loop). */
+canvas.dp-chart{display:block;width:100%;max-width:100%;min-height:140px}
+.dp-chart-wrap{display:block;width:100%}
+.dp-chart-wrap canvas.dp-chart{min-height:0}
+
+/* ── Backend branding: gradient accents on dark ── */
+.topbar{border-bottom:1px solid var(--line);padding-bottom:.55rem}
+.topbar h1{display:flex;align-items:center;gap:.55rem}
+.topbar h1::before{content:"";width:5px;height:1.15em;border-radius:4px;
+  background:var(--grad-brand);box-shadow:0 0 12px rgba(45,212,191,.5)}
+.panel h3,.two-col h3{color:var(--ink)}
+.stat b{background:var(--grad-brand);-webkit-background-clip:text;background-clip:text;color:transparent;font-variant-numeric:tabular-nums}
+.stat .lbl{color:var(--teal);opacity:.85}
+table.data thead th{background:linear-gradient(180deg,#101a2e,#0c1424)}
+table.data thead th:first-child{border-top-left-radius:8px}
+table.data thead th:last-child{border-top-right-radius:8px}
+
+@media (max-width:880px){
+  .two-col,.split,.landing .split{grid-template-columns:1fr}
+  body.app{display:block}
+  .nav-toggle{display:inline-flex}
+  .sidebar{position:fixed;left:0;top:0;z-index:100;width:264px;height:100dvh;transform:translateX(-100%);
+    transition:transform .22s ease;box-shadow:0 12px 50px rgba(0,0,0,.6)}
+  body.nav-open .sidebar{transform:none}
+  body.nav-open .nav-backdrop{display:block}
+  .main{padding:1rem 1.1rem 3rem}
+  /* No-JS fallback: if tables.js hasn't wrapped the table, make the table itself
+     the scroll container so the page still never scrolls sideways. */
+  table.data:not(.dp-table-wrap>table.data){display:block;overflow-x:auto}
+  .hero h1,.landing .hero h1{font-size:2rem}
+  .features .grid,.features .grid.three{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  .sidebar{transition:none}
+}
+/* Denser tables on small screens: more columns fit before scrolling is needed. */
+@media (max-width:700px){
+  table.data{font-size:.85rem}
+  table.data th,table.data td{padding:.45rem .4rem}
+  table.data th{font-size:.7rem;letter-spacing:.02em}
+  /* Stop columns collapsing to one word per line. Squeezed columns made rows
+     several times taller than they needed to be; the table scrolls sideways
+     anyway, so a readable minimum column width is the better trade. */
+  table.data th,table.data td{min-width:5.5rem}
+  table.data th:first-child,table.data td:first-child{min-width:7.5rem}
+  .trunc{max-width:min(220px,52vw)}
+  .dp-tbar{gap:.35rem}
+  .dp-tbar .dp-tsearch{flex:1 1 100%;order:-1}
+  .dp-tbar .dp-tcsv{margin-left:0}
+  .stat-row{gap:.6rem}
+  .stat{padding:.65rem .8rem;min-width:0;flex:1 1 calc(50% - .6rem)}
+  .stat b{font-size:clamp(1rem,4.4vw,1.25rem)}
+  .panel{padding:.85rem .8rem}
+  .period-switch{gap:.3rem}
+  .period-switch a{padding:.3rem .65rem;font-size:.85rem}
+  .period-custom input[type=date]{font-size:.8rem;padding:.28rem .4rem}
+}
+/* Very narrow: let the range picker take its own line rather than squeezing. */
+@media (max-width:460px){
+  .period-range{flex-wrap:wrap;width:100%}
+  .period-range input[type=date]{flex:1 1 40%}
+  .notice-banner{flex-direction:column;gap:.4rem}
+}
+
+/* ── Platform console ── */
+.small{font-size:.78rem}
+.page-actions{display:flex;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap}
+.stat b{font-variant-numeric:tabular-nums}
+.stat .sub{display:block;color:var(--muted);font-size:.72rem;margin-top:.15rem}
+.stat.alert{border-color:rgba(251,191,36,.4);background:linear-gradient(180deg,rgba(251,191,36,.08),var(--bg-2))}
+.stat.alert b{color:var(--warn);-webkit-text-fill-color:var(--warn)}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.6rem}
+.panel-head h3{margin:0}
+.signup-list{display:flex;flex-direction:column;gap:.6rem}
+.signup-item{display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  border:1px solid var(--line);border-radius:3px;padding:.7rem .9rem;background:var(--card)}
+.signup-item .who{font-size:.82rem;margin-top:.15rem}
+.signup-actions{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap}
+.signup-actions form{margin:0}
+.empty-state{text-align:center;color:var(--muted);padding:1.6rem 1rem}
+.empty-state svg{width:30px;height:30px;color:var(--good);margin-bottom:.4rem}
+.org-group{border:1px solid var(--line);border-radius:3px;margin-top:.6rem;background:var(--card)}
+.org-group>summary{cursor:pointer;padding:.6rem .9rem;list-style:none;display:flex;align-items:center;gap:.5rem}
+.org-group>summary::-webkit-details-marker{display:none}
+.org-group>summary::before{content:"▸";color:var(--muted);font-size:.8rem;transition:transform .15s}
+.org-group[open]>summary::before{transform:rotate(90deg)}
+.org-group[open]>summary{border-bottom:1px solid var(--line)}
+.org-group .agent-list{margin:0}
+.org-group .agent-list td{padding:.45rem .9rem}
+.org-group>p{padding:.6rem .9rem;margin:0}
+
+/* Platform horizontal sub-menu (tabs) */
+.subnav{display:flex;gap:.2rem;border-bottom:1px solid var(--line);margin-bottom:1.1rem;flex-wrap:wrap}
+.subnav a{padding:.5rem .9rem;color:var(--muted);font-weight:600;font-size:.92rem;border-bottom:2px solid transparent;margin-bottom:-1px}
+.subnav a:hover{color:var(--ink);text-decoration:none}
+.subnav a.on{color:var(--teal);border-bottom-color:var(--teal)}
+
+/* Organizations tree (collapsible org panels + clickable agents) */
+.org-panel{border:1px solid var(--line);border-radius:4px;background:var(--card);box-shadow:var(--shadow);margin-bottom:.8rem}
+.org-panel>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.9rem 1.1rem}
+.org-panel>summary::-webkit-details-marker{display:none}
+.org-panel>summary::before{content:"▸";color:var(--muted);transition:transform .15s}
+.org-panel[open]>summary::before{transform:rotate(90deg)}
+.org-panel[open]>summary{border-bottom:1px solid var(--line)}
+.op-name{display:flex;align-items:center;gap:.5rem}
+.op-body{padding:1rem 1.1rem}
+.op-manage{display:flex;flex-wrap:wrap;gap:.8rem 1.2rem;align-items:center;justify-content:space-between;
+  padding-bottom:.9rem;border-bottom:1px dashed var(--line);margin-bottom:.6rem}
+.op-manage .bill-form{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+.op-tree h4{margin:.7rem 0 .2rem;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.agent-rows{display:flex;flex-wrap:wrap;gap:.5rem;padding:.5rem .2rem}
+.agent-link{background:var(--card-2);border:1px solid var(--line-2);border-radius:4px;padding:.32rem .8rem;cursor:pointer;font:inherit;color:var(--ink)}
+.agent-link:hover{border-color:var(--teal);color:var(--teal)}
+
+/* Modal */
+.modal-backdrop{position:fixed;inset:0;background:rgba(3,7,18,.7);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:1000;backdrop-filter:blur(4px)}
+.modal-backdrop[hidden]{display:none}
+.modal-box{background:var(--card);border:1px solid var(--line-2);border-radius:4px;max-width:560px;width:100%;max-height:85vh;overflow:auto;box-shadow:0 30px 80px rgba(0,0,0,.7)}
+.modal-head{position:sticky;top:0;background:var(--card);display:flex;justify-content:space-between;align-items:center;padding:1rem 1.2rem;border-bottom:1px solid var(--line)}
+.modal-head h3{margin:0}
+.modal-close{border:0;background:none;font-size:1.6rem;line-height:1;cursor:pointer;color:var(--muted)}
+.modal-body{padding:1.1rem 1.2rem}
+.um-sub{color:var(--muted);margin-bottom:.9rem;display:flex;align-items:center;gap:.5rem}
+.um-sub .pill.on{background:rgba(52,211,153,.15);color:var(--good);border-radius:4px;padding:.1rem .5rem;font-size:.72rem}
+dl.kv{display:grid;grid-template-columns:130px 1fr;gap:.45rem .8rem;margin:0}
+dl.kv dt{color:var(--muted);font-size:.85rem}
+dl.kv dd{margin:0;font-size:.9rem}
+
+@media (max-width:720px){
+  .signup-item{flex-direction:column;align-items:flex-start}
+}
+
+/* Scroll-to-top button (dashboard + public) */
+.to-top{position:fixed;right:clamp(.9rem,3vw,1.6rem);bottom:clamp(.9rem,3vw,1.6rem);z-index:200;
+  width:46px;height:46px;border-radius:4px;border:1px solid rgba(45,212,191,.35);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;color:#fff;background:var(--grad-brand-v);
+  box-shadow:0 8px 26px rgba(37,99,235,.45),0 0 0 1px rgba(45,212,191,.15);
+  opacity:0;visibility:hidden;transform:translateY(12px);transition:opacity .25s ease,transform .25s ease,box-shadow .2s ease}
+.to-top.show{opacity:1;visibility:visible;transform:none}
+.to-top:hover{box-shadow:0 0 24px rgba(45,212,191,.6),0 10px 30px rgba(37,99,235,.5)}
+.to-top svg{width:22px;height:22px}
+@media (prefers-reduced-motion:reduce){.to-top{transition:none}}
+
+/* ── Inline styles the Phase 6 port replaced ──
+   Each of these was a style="" attribute on the legacy markup. The values are
+   copied across unchanged; only where they live has moved, because decision
+   D13 rules out style-src 'unsafe-inline'. */
+@layer components {
+    /* team.php: the edit form inside a <details> cell */
+    .edit-form { margin-top: 0.5rem; }
+
+    /* team.php: the ✕ that removes someone from a team sits on the chip */
+    .inline-form { display: inline; }
+
+    /* team.php: the "add team" row is spaced off the team list above it */
+    .new-team { margin-top: 0.6rem; }
+
+    /* clients.php: a contract bill-rate box, narrow enough to sit in the row */
+    .rate-input { width: 6.5em; }
+
+    /* overview.php: the out-of-hours notice, tight under the details grid */
+    .out-of-schedule { margin: 0.8rem 0 0; }
 }
 
 /* ─────────────────── Public shell, forms and auth (Phase 5) ───────────────────

@@ -4,9 +4,13 @@ namespace App\Providers;
 
 use App\Services\Oidc\OidcClient;
 use App\Services\Oidc\ProviderRegistry;
+use App\Support\Period;
+use App\Support\PlanLimits;
 use App\Support\Plans;
 use App\Support\Platform;
 use App\Support\Subscription;
+use App\View\Composers\NavigationComposer;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -24,6 +28,8 @@ class AppServiceProvider extends ServiceProvider
          * test's platform organization into the next.
          */
         $this->app->singleton(Platform::class);
+        $this->app->singleton(Period::class);
+        $this->app->singleton(PlanLimits::class);
         $this->app->singleton(Plans::class);
         $this->app->singleton(Subscription::class);
         $this->app->singleton(ProviderRegistry::class);
@@ -32,6 +38,12 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        //
+        /*
+         * The app shell's sidebar, badges and acting-as banner. Attached to
+         * the layout rather than assembled per controller: the legacy
+         * nav_context() must be merged into every page's variables by hand,
+         * and a page that forgets loses its badges silently.
+         */
+        View::composer('layouts.app', NavigationComposer::class);
     }
 }
