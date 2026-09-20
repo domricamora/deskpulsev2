@@ -1,100 +1,154 @@
 # DeskPulse
 
 **Remote-work monitoring & time tracking for teams and individuals.** A standalone,
-multi-tenant product — an open, self-hostable alternative to Hubstaff / Time Doctor /
-RescueTime.
+multi-tenant Laravel application — an open, self-hostable alternative to Hubstaff,
+Time Doctor, and RescueTime.
 
-- **Server** — PHP 8.2 + MySQL (runs on WAMP/Apache; no Composer, no build step).
-- **Desktop agent** — Python + PySide6 tray app that tracks time, activity/idle,
-  active windows, running tasks, the current task, and screenshots, syncing to the
-  server over **HMAC-signed webhooks**.
+- **Backend** — [Laravel](https://laravel.com) 13 on PHP 8.3, MySQL, Composer
+- **Frontend** — Laravel Blade templates styled with [Tailwind CSS](https://tailwindcss.com) v4, built with [Vite](https://vitejs.dev)
+- **Desktop agent** — Python tray app that tracks time, activity/idle, active windows,
+  running tasks, screenshots, and syncs to the server over **HMAC-signed webhooks**
 
-> Architecture, the full requirements log, and data model are documented in
-> [docs/MIGRATION-PLAN.md](docs/MIGRATION-PLAN.md).
+## Tech stack
+
+| Layer | Technology |
+|-------|-----------|
+| Backend | Laravel 13 (PHP 8.3) |
+| Build tool | Vite + Laravel Vite Plugin |
+| CSS | Tailwind CSS v4 (`@tailwindcss/vite`) |
+| Database | MySQL |
+| Frontend | Blade templates, vanilla JS (modular IIFEs) |
+| Desktop agent | Python + PySide6 |
+| Testing | PHPUnit / Pest |
+| Package manager | Composer (PHP) + npm (JS) |
 
 ## Features
 
-- Automatic time tracking (per project & per task) + manual entries with
-  **manager approval/rejection**
-- Activity & **idle detection** (15-min threshold → active vs inactive)
-- Active **window/app** insights (summary + timeline) and **running tasks**
-- **Screenshots** (configurable interval, optional blur, visible recording state)
-- Worker-managed **tasks** (add/remove/select) and **time-per-task** reporting
-- **Live** team view for managers (who's working now)
-- **Clients & contracts**, **per-agent and per-customer billing** (hourly or flat
-  monthly service charge), **salary/labor-cost** reports, CSV export
-- **Public share links** (read-only day/week/month summaries with graphs)
-- SEO-optimized, blue-themed marketing site + **download** page + user logins that
-  lead into role-based dashboards (member / manager / admin)
+- **Time tracking** — automatic (per project & task) + manual entries with manager
+  approval/rejection
+- **Activity & idle detection** — 15-min threshold → active vs inactive
+- **Window/app insights** — active window summary + timeline, running tasks
+- **Screenshots** — configurable interval, optional blur, visible recording state
+- **Live team view** — see who's working, right now
+- **Clients & contracts** — per-agent and per-customer billing (hourly or flat-rate),
+  salary/labor-cost reports, CSV export
+- **Leave management** — entitlement tracking, requests, manager approval
+- **Public share links** — read-only day/week/month summaries with graphs
+- **Role-based dashboards** — member / manager / admin / staff / super-admin
+- **Multi-tenant** — complete data isolation per organization
+- **Dark-first design** — custom Tailwind theme with self-hosted fonts
 
-## Quick start — server (WAMP)
+## Requirements
 
-1. **Configure**: copy `server/config.example.php` → `server/config.php` and set your
-   MySQL credentials (WAMP default: user `root`, empty password).
-2. **Install the database** (creates the DB + tables, optionally demo data):
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File install.ps1 -Seed
-   ```
-   or directly:
-   ```
-   "c:/wamp64/bin/php/php8.2.26/php.exe" server/install.php --seed
-   ```
-   (Tables also auto-create on first request; `--seed` adds demo users/data.)
-3. **Open the app** (Apache serves the repo under the webroot):
-   ```
-   http://localhost/vtnew/deskpulse/server/public/
-   ```
-   For a clean URL, point a vhost document root at `server/public/`.
+- PHP 8.3+ with Composer
+- MySQL 8.0+
+- Node.js 20+ with npm
+- Python 3.12+ (desktop agent only)
 
-### Demo logins (after `--seed`)
+## Installation
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/domricamora/deskpulsev2.git
+cd deskpulsev2
+```
+
+### 2. Install PHP dependencies
+
+```bash
+composer install
+```
+
+### 3. Configure the application
+
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+Edit `.env` and set your database credentials, app URL, and mail settings.
+
+### 4. Run migrations and seed demo data
+
+```bash
+php artisan migrate --force
+php artisan db:seed --class=DemoSeeder
+```
+
+### 5. Build frontend assets
+
+```bash
+npm install
+npm run build
+```
+
+### 6. Start the server
+
+```bash
+php artisan serve
+```
+
+Open `http://localhost:8000` in your browser.
+
+### Demo logins (after seeding)
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | `admin@demo.test` (or `DESKPULSE_ADMIN_EMAIL`) | `ChangeMe!123` (or `DESKPULSE_ADMIN_PASS`) |
+| Admin | `admin@demo.test` | `ChangeMe!123` |
 | Manager | `manager@demo.test` | `Demo12345` |
 | Members | `ava@demo.test`, `ben@demo.test`, `carla@demo.test` | `Demo12345` |
 
-## Quick start — desktop agent
+## Desktop agent
 
-```powershell
-py -m venv .venv
+```bash
+python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
-.venv\Scripts\python -m agent.main      # run from the repo root
+.venv\Scripts\python -m agent.main
 ```
 
-Sign in with a DeskPulse account and your server URL; pick a project/task and press
-**Start**. Tracking runs only while the session is on (a "● Monitoring" badge shows).
+Sign in with your DeskPulse account and server URL, pick a project/task, and click
+**Start**. A "● Monitoring" badge indicates tracking is active.
 
-### Build an installable Windows app
+### Build a Windows installer
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File agent\packaging\build.ps1
 ```
 
 Produces `dist\DeskPulse\` and (with Inno Setup) `dist\installer\DeskPulse-Setup-*.exe`.
-See [agent/packaging/README.md](agent/packaging/README.md) for the Windows trust /
-SmartScreen / code-signing details.
 
 ## Testing
 
-- Lint PHP: `"c:/wamp64/bin/php/php8.2.26/php.exe" -l server/src/dashboard.php`
-- Webhook end-to-end (no GUI):
-  ```
-  py tools/test_webhook.py http://localhost/vtnew/deskpulse/server/public ava@demo.test Demo12345
-  ```
+```bash
+php artisan test
+```
 
-## Layout
+Tests use the `deskpulse_test` MySQL database (configure in `phpunit.xml`).
+
+## Project structure
 
 ```
-server/        PHP web app (config, schema.sql, install.php, seed.php, public/, src/, templates/)
-agent/         Python desktop agent (config, webhook_client, monitor/, ui/, packaging/)
-tools/         test_webhook.py
-install.ps1    one-step DB installer (finds WAMP PHP)
-requirements.txt   agent Python deps
+app/          Application code (models, controllers, middleware, providers)
+resources/    Blade views, CSS (Tailwind), JS modules
+routes/       Web, console, and agent API routes
+config/       Application configuration
+database/     Migrations and seeders
+agent/        Python desktop agent
+tests/        PHPUnit / Pest test suites
+tools/        CLI utilities
 ```
+
+## Contributing
+
+Open a pull request! Please run the test suite and linters before submitting.
 
 ## Security & privacy
 
 Monitoring is consent-first: it runs only while tracking is on, the agent shows a
 visible recording indicator, screenshots can be blurred, and all data lives in your
 own workspace. Use it for legitimate, disclosed workforce management.
+
+## License
+
+MIT

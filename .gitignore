@@ -68,6 +68,15 @@ server/install/*.sql
 server/sessions/
 # (scoped below — a bare "sessions/" would also ignore storage/framework/sessions/)
 
+# AI / Claude tooling artifacts (never committed — local dev state only)
+.claude/
+claude.md
+CLAUDE.md
+.ai/
+.aiignore
+.ai_context/
+ai_summary/
+
 # Local MCP tooling config (Playwright etc.)
 .mcp.json
 
