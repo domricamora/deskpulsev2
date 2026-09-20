@@ -54,6 +54,25 @@ class User extends Authenticatable
     }
 
     /**
+     * The NAME of that column, which the framework needs separately.
+     *
+     * getAuthPassword() covers reading it. Writing it goes through this, and
+     * the default 'password' is a column this schema does not have — so
+     * anything that writes a hash back (rehash-on-login, the password broker)
+     * fails with "Unknown column 'password'".
+     *
+     * That failure is invisible to the test suite, because it only fires when
+     * the stored hash needs rehashing: fixtures built with bcrypt() already
+     * carry the configured cost, while every real row was written by the
+     * legacy `password_hash($p, PASSWORD_DEFAULT)` at cost 10. It reproduces
+     * only against real data. See docs/migration/database.md §7a C2.
+     */
+    public function getAuthPasswordName(): string
+    {
+        return 'password_hash';
+    }
+
+    /**
      * This schema has no `remember_token` column, and the legacy app has no
      * "remember me" — the session cookie's lifetime is 0.
      *

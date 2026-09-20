@@ -305,3 +305,77 @@ test('signup gives the new admin a personal share link and alerts sales', functi
         ->and($link->token)->not->toBeEmpty()
         ->and(EmailOutbox::where('subject', 'like', 'New DeskPulse signup%')->exists())->toBeTrue();
 });
+
+/* ── Legacy password hashes ──────────────────────────────────────────────── */
+
+test('a sign-in works against a hash written by the legacy application', function () {
+    // Every row in the real database was hashed by
+    // password_hash($p, PASSWORD_DEFAULT) — bcrypt at cost 10 — while this app
+    // is configured for 12. A fixture built with bcrypt() already carries the
+    // configured cost and so exercises a different path entirely, which is how
+    // a 500 on every real sign-in survived a green suite.
+    $organization = org();
+
+    $user = member($organization, UserRole::Member, [
+        'password_hash' => password_hash('Demo12345', PASSWORD_BCRYPT, ['cost' => 10]),
+    ]);
+
+    expect($user->password_hash)->toStartWith('$2y$10$');
+
+    $this->post('/login', ['email' => $user->email, 'password' => 'Demo12345'])
+        ->assertRedirect('/app');
+
+    expect(auth()->id())->toBe($user->id);
+});
+
+test('a legacy hash is left exactly as it was', function () {
+    // The legacy handle_login() only calls password_verify(); it never rewrites
+    // the stored hash. Rehash-on-login is off to match, so signing in must not
+    // touch the row. See config/hashing.php.
+    $organization = org();
+
+    $user = member($organization, UserRole::Member, [
+        'password_hash' => password_hash('Demo12345', PASSWORD_BCRYPT, ['cost' => 10]),
+    ]);
+
+    $before = $user->password_hash;
+
+    $this->post('/login', ['email' => $user->email, 'password' => 'Demo12345'])
+        ->assertRedirect('/app');
+
+    expect($user->fresh()->password_hash)->toBe($before);
+});
+
+test('rehashing on login, if it is ever switched on, writes to the real column', function () {
+    // This is the configuration that broke: rehash-on-login is Laravel's
+    // default, and it writes through getAuthPasswordName(). Left at the
+    // framework default of 'password' it produced
+    // "Unknown column 'password'" — a 500 on every real sign-in, invisible to
+    // a suite whose fixtures never need rehashing.
+    //
+    // The flag ships off to match the legacy app. This test exercises it ON so
+    // that turning it on stays a one-line decision rather than an outage.
+    config(['hashing.rehash_on_login' => true]);
+
+    $organization = org();
+
+    $user = member($organization, UserRole::Member, [
+        'password_hash' => password_hash('Demo12345', PASSWORD_BCRYPT, ['cost' => 10]),
+    ]);
+
+    $before = $user->password_hash;
+
+    $this->post('/login', ['email' => $user->email, 'password' => 'Demo12345'])
+        ->assertRedirect('/app');
+
+    $after = $user->fresh()->password_hash;
+
+    expect((new User)->getAuthPasswordName())->toBe('password_hash')
+        ->and(Schema::hasColumn('users', 'password'))->toBeFalse()
+        // Upgraded in place, and the account still opens with the same password.
+        // The cost is read from config rather than hardcoded: phpunit.xml
+        // lowers BCRYPT_ROUNDS so the suite is not spending seconds hashing.
+        ->and($after)->not->toBe($before)
+        ->and($after)->toStartWith(sprintf('$2y$%02d$', config('hashing.bcrypt.rounds')))
+        ->and(Hash::check('Demo12345', $after))->toBeTrue();
+});
