@@ -18,11 +18,13 @@ use App\Http\Controllers\Dashboard\LeaveController;
 use App\Http\Controllers\Dashboard\LiveController;
 use App\Http\Controllers\Dashboard\OverviewController;
 use App\Http\Controllers\Dashboard\PayrollController;
+use App\Http\Controllers\Dashboard\SalaryRunController;
 use App\Http\Controllers\Dashboard\ScreenshotController;
 use App\Http\Controllers\Dashboard\SessionController;
 use App\Http\Controllers\Dashboard\TaskController;
 use App\Http\Controllers\Dashboard\TimesheetController;
 use App\Http\Controllers\Dashboard\TeamController;
+use App\Http\Controllers\Dashboard\WiseController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -209,6 +211,15 @@ Route::middleware(['auth', 'password.changed', 'tenant'])->group(function () {
         Route::middleware('cap:pay_adjustments')->group(function () {
             Route::get('/app/adjustments', [AdjustmentController::class, 'show'])->name('adjustments');
             Route::post('/app/adjustments', [AdjustmentController::class, 'update']);
+        });
+
+        // Where each employee's money is sent, and the batch file that sends
+        // it. The CSV is Wise's own upload format, blank ninth column included.
+        Route::middleware('cap:wise_manage')->group(function () {
+            Route::get('/app/wise', [WiseController::class, 'show'])->name('wise');
+            Route::post('/app/wise', [WiseController::class, 'update']);
+            Route::get('/app/salary-run', [SalaryRunController::class, 'show'])->name('salary-run');
+            Route::get('/app/salary-run.csv', [SalaryRunController::class, 'export']);
         });
 
         // Ingests into the uploader's OWN organization, so there is no org
