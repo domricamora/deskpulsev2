@@ -14,9 +14,11 @@ use App\Http\Controllers\Dashboard\AgentController;
 use App\Http\Controllers\Dashboard\AgentDetailController;
 use App\Http\Controllers\Dashboard\AgentInfoController;
 use App\Http\Controllers\Dashboard\ApprovalController;
+use App\Http\Controllers\Dashboard\AuditController;
 use App\Http\Controllers\Dashboard\BillingController;
 use App\Http\Controllers\Dashboard\ClientController;
 use App\Http\Controllers\Dashboard\ContractController;
+use App\Http\Controllers\Dashboard\DeviceController;
 use App\Http\Controllers\Dashboard\EfficiencyController;
 use App\Http\Controllers\Dashboard\ImportController;
 use App\Http\Controllers\Dashboard\LeaveController;
@@ -170,6 +172,21 @@ Route::middleware(['auth', 'password.changed', 'tenant'])->group(function () {
         Route::middleware('cap:clients_manage')->group(function () {
             Route::get('/app/clients', [ClientController::class, 'show'])->name('clients');
             Route::post('/app/clients', [ClientController::class, 'update']);
+        });
+
+        /* ── Devices and audit (Phase 15) ────────────────────────────────── */
+
+        // Revoking deletes the row: the secret it signs with stops existing,
+        // every request 401s, and the agent treats that as signed out.
+        Route::middleware('cap:devices')->group(function () {
+            Route::get('/app/devices', [DeviceController::class, 'show'])->name('devices');
+            Route::post('/app/devices', [DeviceController::class, 'update']);
+        });
+
+        // A DERIVED view over timestamps that already exist, not a log table
+        // (decision D14).
+        Route::middleware('cap:audit')->group(function () {
+            Route::get('/app/audit', [AuditController::class, 'show'])->name('audit');
         });
 
         // Admin-only directory. Everybody HAS a personal link; this is where
