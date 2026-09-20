@@ -195,6 +195,7 @@ Phase 2 should add one running Pest on MySQL, plus a job running
 | 7 Agent API | `tools/test_webhook.py` **unmodified**, green |
 | 8 Compatibility | the real agent tracks a full session against Laravel — `tools/test_agent_compat.py`, green, empty offline queue |
 | 9 Monitoring | stale close lands on the last heartbeat; a screenshot is unreachable across tenants, including by URL; overtime answers the same under four host timezones |
+| 10 Live | scope holds per role and tenant; a poll closes a stale session; query count flat as agents grow |
 | 11 Reports | golden master matches the legacy system |
 | 12 Billing | golden master; no labor cost reaches a `client_viewer` |
 | 13 Payroll | import idempotency; payslip 403 at direct URL |

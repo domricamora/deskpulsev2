@@ -709,6 +709,9 @@ dl.kv dd{margin:0;font-size:.9rem}
 
     /* screenshots.php: the member/day filter row above the grid (Phase 9) */
     .filter-form { margin-bottom: 1rem; }
+
+    /* live.js: the "Today: …" footer under each live card (Phase 10) */
+    .live-today { margin-top: 0.5rem; }
 }
 
 /* ─────────────────── Public shell, forms and auth (Phase 5) ───────────────────

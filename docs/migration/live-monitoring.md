@@ -115,7 +115,58 @@ Performance notes for Phase 20 (not Phase 10):
 - Grouping and ordering: client then team, both sorted; unteamed under `"No team"`.
 - Query count stays flat as the number of open sessions grows (no N+1).
 
-## 6. Migration risks
+## 6. Phase 10 as built
+
+Two routes behind `cap:live`: `LiveController::index()` for the shell and
+`LiveController::data()` for the snapshot. The data path keeps `/app/live/data`
+— §51's `/api/v1/live` rename is what the replica constraint rules out, and
+`live.js` targets the existing path.
+
+`App\Services\Reporting\LiveBoard` builds the payload, in both modes, in a
+**fixed number of queries**. The legacy builds each card with four per-session
+queries — latest window, latest activity sample, latest screenshot, today's
+totals — so ten live agents cost forty round trips every fifteen seconds from
+every open dashboard. Each of those is batched here:
+
+- the newest row per session resolves the `MAX(ts)` first and joins back to it,
+  rather than dragging back every sample a day-long session has accumulated;
+- today's totals are one `SessionStats::forUsers()` call for everyone on the
+  board, rolled up per user with the same `summarize()` the reports use;
+- team names are one join, first name per user alphabetically.
+
+`LiveTest` asserts the count does not move between one live agent and ten. It
+warms up first: the organization's period config is memoised per container, so
+an un-warmed first poll costs two queries a later one does not, and the naive
+version of that test fails in the *cheaper* direction.
+
+### Reproduced deliberately
+
+- **The endpoint writes on a read.** `closeStale()` runs before every snapshot,
+  as `dash_live_data()` does. Nothing else closes a crashed agent's session on a
+  schedule (decision D11), so removing it leaves the board showing people who
+  went offline hours ago. It also means the route can never be cached or served
+  from a replica.
+- **Screenshots only with the capability.** A card carries imagery only when the
+  viewer holds `screenshots`. No role currently has `live` without it, so this
+  is a guard rather than a live path — but the capability split belongs to the
+  product, not to this port.
+- The card keeps its exact field names and the `No client / direct` and
+  `No team` literals, because `live.js` reads them.
+
+### One deviation
+
+The activity bar's width was `style="width:N%"` built into a markup string.
+Decision D13 rules that out, so the bar is created as an element and its width
+set through the CSSOM — same pixels, nothing for a Content-Security-Policy to
+reject. The port also builds nodes instead of concatenating HTML, which retires
+the hand-rolled `esc()` the legacy needed.
+
+Verified against real data: an agent session opened with the frozen client
+appeared on the board with its latest window, 64% activity, today's totals and
+its newest screenshot through `/app/screenshots/{id}/image`; a session left open
+across a five-hour gap was closed by the next poll, at its last heartbeat.
+
+## 7. Migration risks
 
 | Risk | Severity | Note |
 |---|---|---|

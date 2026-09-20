@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\PendingController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Dashboard\ClientController;
+use App\Http\Controllers\Dashboard\LiveController;
 use App\Http\Controllers\Dashboard\OverviewController;
 use App\Http\Controllers\Dashboard\ScreenshotController;
 use App\Http\Controllers\Dashboard\TaskController;
@@ -141,6 +142,14 @@ Route::middleware(['auth', 'password.changed', 'tenant'])->group(function () {
         Route::middleware('cap:clients_manage')->group(function () {
             Route::get('/app/clients', [ClientController::class, 'show'])->name('clients');
             Route::post('/app/clients', [ClientController::class, 'update']);
+        });
+
+        // The live board, and the JSON it polls every 15 seconds. The data
+        // route keeps its existing path — live.js targets it, and §51's
+        // /api/v1/live rename is what the replica constraint rules out.
+        Route::middleware('cap:live')->group(function () {
+            Route::get('/app/live', [LiveController::class, 'index'])->name('live');
+            Route::get('/app/live/data', [LiveController::class, 'data'])->name('live.data');
         });
 
         /* ── Monitoring (Phase 9) ────────────────────────────────────────── */

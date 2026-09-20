@@ -9,3 +9,4 @@ import './dashboard.js';
 import './charts.js';
 import './tables.js';
 import './agent-modal.js';
+import './live.js';
