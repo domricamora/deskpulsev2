@@ -121,11 +121,12 @@ overwritten in place at 3 fps, and it persists after the session ends.
 The admin-side route `/app/remote/{id}/frame` *is* properly gated by `require_cap('remote')`
 — but it is not the only way to reach the bytes.
 
-> **Recommendation — fix during Phase 16.** Frames move to private storage and are
-> served only through the authorized route; the file is deleted when the session ends.
-> Visible behaviour is unchanged. This needs the user's explicit approval as a
-> deliberate deviation from "nothing else changes", and it should be treated as the
-> highest-priority security item alongside screenshots.
+> **DONE in Phase 16 (decision D5).** Frames are on the `private` disk, served
+> only through `/app/remote/{id}/frame` behind `cap:remote` and the org scope
+> check, and **deleted when the session ends** — by the admin, by the agent, or
+> by the garbage collector. Visible behaviour is unchanged: the console still
+> shows the same picture. There is a test asserting nothing lands under
+> `public/uploads/remote/`.
 
 ## 6. Platform coverage
 

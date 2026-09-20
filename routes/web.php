@@ -19,6 +19,7 @@ use App\Http\Controllers\Dashboard\BillingController;
 use App\Http\Controllers\Dashboard\ClientController;
 use App\Http\Controllers\Dashboard\ContractController;
 use App\Http\Controllers\Dashboard\DeviceController;
+use App\Http\Controllers\Dashboard\RemoteController as DashboardRemoteController;
 use App\Http\Controllers\Dashboard\EfficiencyController;
 use App\Http\Controllers\Dashboard\ImportController;
 use App\Http\Controllers\Dashboard\LeaveController;
@@ -172,6 +173,21 @@ Route::middleware(['auth', 'password.changed', 'tenant'])->group(function () {
         Route::middleware('cap:clients_manage')->group(function () {
             Route::get('/app/clients', [ClientController::class, 'show'])->name('clients');
             Route::post('/app/clients', [ClientController::class, 'update']);
+        });
+
+        /* ── Remote control (Phase 16) ───────────────────────────────────── */
+
+        // Platform operators reach any device; everybody else is confined to
+        // their own organization, and a mismatch is a 404 rather than a 403 so
+        // a foreign device is not revealed to exist.
+        Route::middleware('cap:remote')->group(function () {
+            Route::get('/app/remote/{device}', [DashboardRemoteController::class, 'show'])
+                ->whereNumber('device')->name('remote');
+            Route::post('/app/remote/{device}/start', [DashboardRemoteController::class, 'start'])->whereNumber('device');
+            Route::get('/app/remote/{id}/status', [DashboardRemoteController::class, 'status'])->whereNumber('id');
+            Route::get('/app/remote/{id}/frame', [DashboardRemoteController::class, 'frame'])->whereNumber('id');
+            Route::post('/app/remote/{id}/input', [DashboardRemoteController::class, 'input'])->whereNumber('id');
+            Route::post('/app/remote/{id}/stop', [DashboardRemoteController::class, 'stop'])->whereNumber('id');
         });
 
         /* ── Devices and audit (Phase 15) ────────────────────────────────── */

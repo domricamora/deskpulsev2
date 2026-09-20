@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Agent\RemoteController;
 use App\Http\Controllers\Agent\WebhookController;
 use App\Http\Middleware\VerifyAgentSignature;
 use Illuminate\Support\Facades\Route;
@@ -48,6 +49,12 @@ Route::middleware(VerifyAgentSignature::class)->group(function () {
     Route::patch('/session/{id}', [WebhookController::class, 'stopSession'])->whereNumber('id');
     Route::post('/session/{id}/task', [WebhookController::class, 'setSessionTask'])->whereNumber('id');
 
+    /* Remote control (Phase 16) — the agent has been polling these since
+       before the migration started, getting a 404 each time. */
+    Route::get('/remote/poll', [RemoteController::class, 'poll']);
+    Route::post('/remote/{id}/frame', [RemoteController::class, 'frame'])->whereNumber('id');
+    Route::post('/remote/{id}/end', [RemoteController::class, 'end'])->whereNumber('id');
+
     /* Monitoring data */
     Route::post('/session/{id}/activity', [WebhookController::class, 'activity'])->whereNumber('id');
     Route::post('/session/{id}/windows', [WebhookController::class, 'windows'])->whereNumber('id');
@@ -56,13 +63,10 @@ Route::middleware(VerifyAgentSignature::class)->group(function () {
 });
 
 /*
- * Still to come, on this same prefix and the same HMAC scheme:
+ * Still to come, on this same prefix:
  *
- *   GET  /webhooks/remote/poll          Phase 16 — remote control
- *   POST /webhooks/remote/{id}/frame    Phase 16
- *   POST /webhooks/remote/{id}/end      Phase 16
- *   POST /webhooks/wise                 Phase 12 — a PAYMENT PROVIDER callback
- *                                       using RSA-SHA256, not device HMAC, and
+ *   POST /webhooks/wise                 A PAYMENT PROVIDER callback using
+ *                                       RSA-SHA256, not device HMAC, and
  *                                       currently 410 Gone while pay_method is
  *                                       bank transfer
  */

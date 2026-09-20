@@ -1144,3 +1144,9 @@ dl.kv dd{margin:0;font-size:.9rem}
     /* agent_detail.php: the Devices heading inside the rates panel (Phase 12) */
     .spaced-top { margin-top: 1rem; }
 }
+
+@layer components {
+    /* remote.php: the frame and its hint, previously inline styles (Phase 16) */
+    .remote-screen { max-width: 100%; display: none; border-radius: 8px; cursor: crosshair; }
+    .remote-hint { margin-top: 0.5rem; }
+}

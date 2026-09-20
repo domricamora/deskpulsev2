@@ -136,10 +136,12 @@ def main() -> int:
               isinstance(policy.get(key), kind), repr(policy.get(key)))
 
     # -- 5. Remote control - RemoteController polls this every 3s -------------
-    section("remote control poll (Phase 16 - not built yet)")
+    section("remote control poll")
     try:
-        client.get_json("/webhooks/remote/poll")
-        check("poll answers", True, "implemented")
+        answer = client.get_json("/webhooks/remote/poll")
+        # No session pending for a freshly registered device, which is the
+        # normal idle answer the poller loops on.
+        check("poll answers with a session field", "session" in answer, repr(answer)[:80])
     except requests.HTTPError as exc:
         resp = exc.response
         check("poll fails as JSON, not HTML",
