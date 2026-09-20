@@ -124,38 +124,55 @@ creditable_active_s($s) =
 
 **Unapproved overtime never pays.** `compute_pay_run()` uses this exclusively.
 
-### The timezone quirk — must be a conscious decision
+### The timezone — corrected (decision D2)
 
-`recompute_overtime()` groups by day using `date('Y-m-d', strtotime($s['started_at']))`
-— the **naive stored UTC value read as server-local wall-clock**. The source says so
-explicitly: *"Uses the naive stored value as server-local wall-clock, exactly like
-`daily_series()`/`within_work_schedule()`."*
+**Overtime is bucketed and measured in the organization's `report_tz`.** The day a
+session belongs to, and the wall-clock window `work_start`–`work_end` it is weighed
+against, both come from the tenant's clock. Session timestamps are read as UTC
+explicitly, so the result does not depend on the host's `date.timezone`.
 
-Elsewhere, reporting periods are cut in the org's `report_tz` (`period_ctx()`), and
-display is in the viewer's browser timezone. So overtime day-bucketing follows a
-**third** clock — whatever `date.timezone` the PHP process happens to use.
+It used to. `recompute_overtime()` grouped by `date('Y-m-d', strtotime($s['started_at']))`
+— the **naive stored UTC value read as server-local wall-clock** — and built the
+window the same way. For a tenant outside the server's timezone that is not a
+rounding error, it is the wrong window: a Manila team on 09:00–17:00 was measured
+against 09:00–17:00 *on the server's clock*, which is the middle of their night.
 
-Consequences for the migration:
+Three details make this worse than it first reads:
 
-- Laravel sets `config('app.timezone')` (default `UTC`) and Carbon honours it. If the
-  production PHP box is not on UTC, **porting this faithfully requires reproducing the
-  server-local interpretation**, not just calling `Carbon::parse()`.
-- Getting this wrong silently moves sessions between days near midnight, changing
-  overtime, and therefore changing pay.
+- **`report_tz` exists because of exactly this bug, one layer up.** The schema
+  migration that added it says the period window "silently depended on php.ini's
+  `date.timezone`" and names the three-clock problem outright. Overtime was the
+  calculation left behind.
+- **The legacy source comment is stale.** It claims the bucketing matches
+  `daily_series()`, but `daily_series()` was corrected to `report_tz` at some point
+  — its own comment explains that bucketing on the naive string "put bars in a
+  different day than the table rows". So the dashboard chart and the overtime split
+  have disagreed for a while.
+- **"Replicate exactly" was never actually available.** The legacy app inherits the
+  host's `date.timezone`; Laravel pins `config('app.timezone')` to UTC. Reproducing
+  the old behaviour would have meant reproducing the production box's php.ini, and
+  z.com is a Japanese host. A faithful port of an accident is still an accident, and
+  it is one that moves if the host is ever reconfigured.
 
-> **Settled at Phase 9 by the standing constraint (decision D2): reproduce
-> server-local bucketing.** "The same exact replica … nothing else changes"
-> answers this directly — `report_tz` is the better clock, but moving to it
-> silently restates historical overtime, and overtime is what gets paid.
->
-> Nothing new was written for this. Phase 6 ported `within_work_schedule()` and
-> Phase 7 ported `recompute_overtime()` with the same approximation on purpose,
-> and Phase 9 only calls them. All three still move together or not at all.
->
-> **Correcting it remains worth doing, as its own approved change with the pay
-> figures re-run and signed off** — not as a line inside a migration phase.
-> Golden-master tests (Phase 11) will pin the current behaviour, which is what
-> makes that later change measurable.
+`Format::withinWorkSchedule()` moved with it, as it had to: it drives the overview's
+"in schedule" badge from the same rule, and a badge that says someone is inside their
+hours while the calculation bills the time as overtime is worse than either answer
+alone.
+
+**Restating existing rows is `php artisan overtime:recompute`.** It reports before it
+writes, `--dry-run` shows the impact without touching anything, and it counts
+separately the sessions HR has already approved whose amount moves — those are the
+ones that change what someone is paid. Run the dry run first.
+
+> **Impact.** For any organization already on `report_tz = UTC` with the host on UTC,
+> the arithmetic is unchanged — verified row by row on the development database, zero
+> differences. Everything else moves, and near midnight it moves sessions between
+> days. Golden-master work in Phase 11 pins the corrected behaviour, not the old one.
+
+> **Carried over deliberately:** a window that wraps midnight (22:00–06:00, a night
+> shift) still yields a zero allowance, so every tracked second becomes overtime. The
+> legacy does the same and the badge agrees with it. Fixing that changes what people
+> are paid and belongs in its own approved pass.
 
 ## 5. Activity, windows, processes, idle
 
@@ -200,7 +217,7 @@ removed.
 | `plan_limits()` | `PlanLimits` value object |
 | `wh_activity/windows/idle` | `app/Services/Agent/*IngestService` |
 | `close_stale_sessions()` | service called from the live endpoint — see §3 before moving to the scheduler |
-| `recompute_overtime()` | `OvertimeService`, invoked on session close |
+| `recompute_overtime()` | `Reporting\Overtime`, invoked on session close; restated by `overtime:recompute` |
 | `creditable_active_s()` | `WorkSession::creditableActiveSeconds()` |
 
 Ingest must stay synchronous. The migration plan §44 already says not to queue the basic

@@ -178,7 +178,12 @@ class OverviewController extends Controller
             'pay'          => Format::money($user->pay_rate, $user->currency)
                 . ' / ' . ($user->pay_type ?: 'hourly'),
             'schedule'     => Format::workSchedule($user),
-            'in_schedule'  => Format::withinWorkSchedule($user),
+            // In the organization's reporting timezone, the clock the overtime
+            // split uses. The badge and the money have to agree.
+            'in_schedule'  => Format::withinWorkSchedule(
+                $user,
+                $this->period->timezone((int) $user->effectiveOrgId())
+            ),
             'device'       => $device,
             'current_task' => $currentTask,
             'live'         => WorkSession::query()

@@ -157,6 +157,22 @@ It is idempotent, and it also counts image files left under the public tree with
 no screenshot row — leftovers from re-seeds, still readable by URL. It deletes
 none of them; clear those by hand.
 
+## Overtime
+
+Overtime is split against the **organization's `report_tz`**, not the host's
+clock (decision D2). Rows computed before that correction are stale and nothing
+recomputes them on its own, so any environment carrying older data needs:
+
+```bash
+php artisan overtime:recompute --dry-run   # the impact, written nowhere
+php artisan overtime:recompute
+```
+
+This changes what people are paid. The dry run rolls back inside a transaction
+and prints the before/after hours, and it counts separately the sessions HR has
+already **approved** whose amount moves — those are the ones worth reading
+before you commit. Run it first, every time.
+
 ## Migrations
 
 The 37 migrations in `database/migrations/` were **generated from the live database**,

@@ -4,6 +4,7 @@ namespace App\Services\Reporting;
 
 use App\Models\User;
 use App\Models\WorkSession;
+use App\Support\Period;
 use Illuminate\Support\Collection;
 
 /**
@@ -31,17 +32,42 @@ use Illuminate\Support\Collection;
  * allowance would make every tracked second overtime for everyone who has not
  * been set up yet.
  *
- * ## Open decision D2
+ * ## Which clock (decision D2, corrected)
  *
- * Days are bucketed with the stored value read as SERVER-LOCAL wall-clock,
- * matching the legacy code and {@see \App\Support\Format::withinWorkSchedule()}.
- * The pay run uses the organization's `report_tz` instead, so the same session
- * can land on different days in the two. Reproduced rather than corrected,
- * because correcting it here alone would put this out of step with the badge
- * the same rule drives. See docs/migration/migration-map.md D2.
+ * Everything here happens in the ORGANIZATION's `report_tz`: the day a session
+ * is bucketed into, and the wall-clock window `work_start`–`work_end` is
+ * measured against. Sessions are stored in UTC and are read as UTC explicitly,
+ * so the result does not depend on the host's `date.timezone`.
+ *
+ * It used to. Both this and the legacy `recompute_overtime()` parsed the stored
+ * value with a bare `strtotime()`, which reads it as server-local, and compared
+ * it against a window built the same way — so a 09:00–17:00 schedule was
+ * effectively 09:00–17:00 *on the server's clock*, not the organization's. For
+ * any tenant outside the server's timezone that is simply the wrong window, and
+ * the answer moved if the host's php.ini changed or the app was redeployed
+ * somewhere else.
+ *
+ * `report_tz` is the clock the rest of the product already settled on: the pay
+ * run cuts its periods in it, `daily_series()` buckets its bars in it, and the
+ * column exists precisely because the reporting window "silently depended on
+ * php.ini's date.timezone" (the legacy schema migration says so in as many
+ * words). Overtime was the one calculation left behind, which mattered most
+ * because overtime is what gets paid.
+ *
+ * Restating existing rows after this change is `php artisan overtime:recompute`.
+ *
+ * ## A limitation carried over deliberately
+ *
+ * A window that wraps midnight (22:00–06:00, a night shift) yields a negative
+ * span, so the day's allowance is zero and every tracked second becomes
+ * overtime. The legacy behaves identically, and
+ * {@see \App\Support\Format::withinWorkSchedule()} agrees with it. Fixing it is
+ * a change to what people are paid and belongs in its own approved pass.
  */
 class Overtime
 {
+    public function __construct(private readonly Period $period) {}
+
     /**
      * Recompute every closed session for one user, optionally from a date.
      *
@@ -54,11 +80,13 @@ class Overtime
     {
         $user = User::query()
             ->whereKey($userId)
-            ->first(['work_start', 'work_end', 'work_days']);
+            ->first(['org_id', 'work_start', 'work_end', 'work_days']);
 
         if (! $user) {
             return;
         }
+
+        $timezone = $this->period->timezone((int) $user->org_id);
 
         $sessions = WorkSession::query()
             ->where('user_id', $userId)
@@ -76,14 +104,18 @@ class Overtime
         $days = array_values(array_filter(explode(',', (string) $user->work_days)));
         $scheduleSet = $start && $end && $days;
 
-        // Grouped by day, then each day walked in order so rule 2 can track how
-        // much of the day's allowance earlier sessions already consumed.
+        // Grouped by the organization's calendar day, then each day walked in
+        // order so rule 2 can track how much of the day's allowance earlier
+        // sessions already consumed.
         $byDay = $sessions->groupBy(
-            fn (WorkSession $session) => date('Y-m-d', strtotime($session->getRawOriginal('started_at')))
+            fn (WorkSession $session) => Period::utcToLocalDate(
+                $session->getRawOriginal('started_at'),
+                $timezone
+            )
         );
 
         foreach ($byDay as $day => $rows) {
-            $this->walkDay((string) $day, $rows, $scheduleSet, $days, (string) $start, (string) $end);
+            $this->walkDay((string) $day, $rows, $scheduleSet, $days, (string) $start, (string) $end, $timezone);
         }
     }
 
@@ -91,13 +123,18 @@ class Overtime
      * @param  Collection<int, WorkSession>  $rows
      * @param  list<string>  $days
      */
-    private function walkDay(string $day, Collection $rows, bool $scheduleSet, array $days, string $start, string $end): void
+    private function walkDay(string $day, Collection $rows, bool $scheduleSet, array $days, string $start, string $end, string $timezone): void
     {
-        $dayOfWeek = (string) ((int) date('N', strtotime($day)));
+        // Anchored at midday so no timezone reading of the date string can land
+        // on the neighbouring day and change which weekday this is.
+        $dayOfWeek = (string) ((int) date('N', strtotime($day . ' 12:00:00')));
         $scheduled = $scheduleSet && in_array($dayOfWeek, $days, true);
 
-        $windowStart = $scheduled ? strtotime($day . ' ' . $start) : 0;
-        $windowEnd = $scheduled ? strtotime($day . ' ' . $end) : 0;
+        // The schedule is wall-clock in the organization's timezone; sessions
+        // are UTC instants. Convert the window once, then every comparison
+        // below is instant-against-instant.
+        $windowStart = $scheduled ? self::instant(Period::localToUtc($day . ' ' . $start, $timezone)) : 0;
+        $windowEnd = $scheduled ? self::instant(Period::localToUtc($day . ' ' . $end, $timezone)) : 0;
 
         // The regular seconds available on this day, consumed in session order.
         $allowance = $scheduled ? max(0, $windowEnd - $windowStart) : 0;
@@ -111,8 +148,8 @@ class Overtime
             }
 
             $active = (int) $session->active_s;
-            $startedAt = strtotime($session->getRawOriginal('started_at'));
-            $endedAt = strtotime($session->getRawOriginal('ended_at'));
+            $startedAt = self::instant($session->getRawOriginal('started_at'));
+            $endedAt = self::instant($session->getRawOriginal('ended_at'));
             $span = max(0, $endedAt - $startedAt);
 
             // Active seconds whose wall-clock falls inside the scheduled window.
@@ -135,6 +172,18 @@ class Overtime
 
             $this->persist($session, $outsideActive + ($insideActive - $regularPart));
         }
+    }
+
+    /**
+     * A stored UTC datetime as an epoch second.
+     *
+     * The ` UTC` matters. Without it `strtotime()` reads the value in whatever
+     * `date.timezone` the process happens to have, which is the whole bug this
+     * calculation used to carry.
+     */
+    private static function instant(string $utcDatetime): int
+    {
+        return (int) strtotime($utcDatetime . ' UTC');
     }
 
     /**
@@ -179,11 +228,19 @@ class Overtime
             ->get();
 
         foreach ($outstanding as $row) {
-            // A day earlier, for the allowance walk's boundary slack.
-            $this->recompute(
-                (int) $row->user_id,
-                date('Y-m-d 00:00:00', strtotime($row->since) - 86400)
-            );
+            // A day earlier, for the allowance walk's boundary slack. One whole
+            // day covers every offset, since none is further out than ±14h.
+            $this->recompute((int) $row->user_id, self::dayBefore((string) $row->since));
         }
+    }
+
+    /**
+     * Midnight UTC the day before a stored UTC datetime — the lower bound a
+     * recompute starts from, so the allowance walk sees the session's whole
+     * local day instead of joining it halfway through.
+     */
+    public static function dayBefore(string $utcDatetime): string
+    {
+        return gmdate('Y-m-d 00:00:00', self::instant($utcDatetime) - 86400);
     }
 }

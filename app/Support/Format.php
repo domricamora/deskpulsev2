@@ -3,6 +3,8 @@
 namespace App\Support;
 
 use App\Models\User;
+use DateTimeImmutable;
+use DateTimeZone;
 
 /**
  * Display formatting, ported from server/src/helpers.php.
@@ -72,17 +74,20 @@ class Format
      * Is the given moment inside the user's standard schedule? null when no
      * schedule is set.
      *
-     * Ports within_work_schedule(), including its use of server local
-     * wall-clock as a best-effort approximation. That approximation is the
-     * subject of open decision D2 — it disagrees with the organization's
-     * report_tz, which is what the pay run uses. Changing it here would move
-     * the overview's "in schedule" badge out of step with the overtime split
-     * that reads the same rule, so both move together in Phase 9 or neither
-     * does.
+     * Ports within_work_schedule(). Read in the ORGANIZATION's reporting
+     * timezone, which is the same clock {@see \App\Services\Reporting\Overtime}
+     * splits overtime on — the badge and the money must agree, or the overview
+     * says someone is inside their hours while the calculation bills the time
+     * as overtime.
      *
-     * @see docs/migration/migration-map.md D2
+     * Both used to read server-local wall-clock, so both answered for the
+     * host's timezone rather than the tenant's. Corrected together (decision
+     * D2), as they must be.
+     *
+     * A window that wraps midnight still reads as empty, here and in the
+     * overtime split alike. See that class for why it stays that way.
      */
-    public static function withinWorkSchedule(User $user, ?int $timestamp = null): ?bool
+    public static function withinWorkSchedule(User $user, string $timezone = 'UTC', ?int $timestamp = null): ?bool
     {
         $start = $user->work_start;
         $end = $user->work_end;
@@ -92,13 +97,18 @@ class Format
             return null;
         }
 
-        $timestamp ??= time();
+        try {
+            $moment = (new DateTimeImmutable('@' . ($timestamp ?? time())))
+                ->setTimezone(new DateTimeZone($timezone));
+        } catch (\Exception) {
+            return null;
+        }
 
-        if (! in_array((string) ((int) date('N', $timestamp)), $days, true)) {
+        if (! in_array((string) ((int) $moment->format('N')), $days, true)) {
             return false;
         }
 
-        $now = date('H:i:s', $timestamp);
+        $now = $moment->format('H:i:s');
 
         return $now >= $start && $now <= $end;
     }
