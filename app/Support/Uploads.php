@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Illuminate\Http\UploadedFile;
+
 /**
  * Where uploaded media lives on disk.
  *
@@ -53,5 +55,71 @@ class Uploads
         if (! is_dir($directory)) {
             @mkdir($directory, 0775, true);
         }
+    }
+
+    /**
+     * Convert an uploaded image to a resized WebP under `logos/`.
+     *
+     * Ports store_logo_webp(). The 480x160 box is a branding box, not a square:
+     * logos are usually wide, and `min(..., 1.0)` is what stops a small one
+     * being upscaled into a blur. Alpha is preserved, so a transparent PNG does
+     * not gain a black background on the dark sidebar.
+     *
+     * @return array{0: string|false, 1: string|null} [relative path, error]
+     */
+    public static function storeLogoWebp(?UploadedFile $file, string $prefix = 'org'): array
+    {
+        if (! $file || ! $file->isValid()) {
+            return [false, 'No file was uploaded.'];
+        }
+
+        if ($file->getSize() > 8 * 1024 * 1024) {
+            return [false, 'Image is too large (max 8 MB).'];
+        }
+
+        if (! function_exists('imagewebp') || ! function_exists('imagecreatefromstring')) {
+            return [false, 'Server image support (GD/WebP) is unavailable.'];
+        }
+
+        $raw = @file_get_contents($file->getRealPath());
+
+        if ($raw === false || $raw === '') {
+            return [false, 'Could not read the uploaded file.'];
+        }
+
+        $source = @imagecreatefromstring($raw);
+
+        if (! $source) {
+            return [false, 'Unsupported image — use PNG, JPG, GIF or WebP.'];
+        }
+
+        $width = imagesx($source);
+        $height = imagesy($source);
+
+        // A branding box, not a square — logos are usually wide. The 1.0 term
+        // is what stops small art being upscaled into a blur.
+        $scale = min(480 / $width, 160 / $height, 1.0);
+        $targetWidth = max(1, (int) round($width * $scale));
+        $targetHeight = max(1, (int) round($height * $scale));
+
+        $target = imagecreatetruecolor($targetWidth, $targetHeight);
+
+        // Alpha preserved, or a transparent PNG gains a black background on the
+        // dark sidebar.
+        imagealphablending($target, false);
+        imagesavealpha($target, true);
+        imagefill($target, 0, 0, imagecolorallocatealpha($target, 0, 0, 0, 127));
+        imagecopyresampled($target, $source, 0, 0, 0, 0, $targetWidth, $targetHeight, $width, $height);
+
+        $relative = 'logos/' . preg_replace('/[^a-z0-9]+/i', '', $prefix) . '-' . Token::random(8) . '.webp';
+
+        self::ensureDirectoryFor(self::path($relative));
+
+        $saved = imagewebp($target, self::path($relative), 82);
+
+        imagedestroy($source);
+        imagedestroy($target);
+
+        return $saved ? [$relative, null] : [false, 'Could not save the converted image.'];
     }
 }
