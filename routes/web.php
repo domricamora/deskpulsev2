@@ -8,10 +8,12 @@ use App\Http\Controllers\Auth\OAuthController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\PendingController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Dashboard\AdjustmentController;
 use App\Http\Controllers\Dashboard\ApprovalController;
 use App\Http\Controllers\Dashboard\BillingController;
 use App\Http\Controllers\Dashboard\ClientController;
 use App\Http\Controllers\Dashboard\EfficiencyController;
+use App\Http\Controllers\Dashboard\LeaveController;
 use App\Http\Controllers\Dashboard\LiveController;
 use App\Http\Controllers\Dashboard\OverviewController;
 use App\Http\Controllers\Dashboard\PayrollController;
@@ -200,6 +202,18 @@ Route::middleware(['auth', 'password.changed', 'tenant'])->group(function () {
         Route::middleware('cap:payroll')->group(function () {
             Route::get('/app/payroll', [PayrollController::class, 'show'])->name('payroll');
         });
+
+        // One-off money on top of the run. The kind carries the sign, so the
+        // amount field only ever takes a positive number.
+        Route::middleware('cap:pay_adjustments')->group(function () {
+            Route::get('/app/adjustments', [AdjustmentController::class, 'show'])->name('adjustments');
+            Route::post('/app/adjustments', [AdjustmentController::class, 'update']);
+        });
+
+        // Staff only, and requesting needs NO capability — anyone may ask for
+        // their own time off. leave_approve is what decides somebody else's.
+        Route::get('/app/leave', [LeaveController::class, 'show'])->name('leave');
+        Route::post('/app/leave', [LeaveController::class, 'update']);
 
         /* ── Billing (Phase 12) ──────────────────────────────────────────── */
 

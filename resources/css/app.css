@@ -1124,3 +1124,11 @@ dl.kv dd{margin:0;font-size:.9rem}
     /* payroll.php: a deduction cell, shown in the alert colour (Phase 13) */
     .negative { color: var(--bad); }
 }
+
+@layer components {
+    /* adjustments.php: an earning shown in the positive colour (Phase 13) */
+    .positive { color: var(--good); }
+
+    /* leave.php: the inline review-note input beside approve/reject (Phase 13) */
+    .note-input { width: 190px; }
+}
