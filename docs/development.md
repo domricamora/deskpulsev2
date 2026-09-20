@@ -103,6 +103,46 @@ The legacy end-to-end harness must keep working unmodified — it is the Phase 7
 py tools/test_webhook.py http://localhost/deskpulsev2/server/public ava@demo.test Demo12345
 ```
 
+## The desktop agent
+
+The agent is frozen — it is not being rebuilt, and nothing under `agent/` is edited
+to accommodate the server. Two tools point it at a local Laravel instead of
+production, because `agent/config.py` hard-locks `SERVER_URL` to
+`https://deskpulse.click` and ignores any `server_url` on disk:
+
+```bash
+py tools/test_agent_compat.py http://localhost/deskpulsev2/public ava@demo.test Demo12345
+py tools/run_agent_local.py   http://localhost/deskpulsev2/public --fresh
+```
+
+The first is the Phase 8 gate: it imports the agent's own `WebhookClient` and
+`Tracker` and runs a real tracked session, then asserts the agent's offline queue
+is empty — that queue is where the agent silently buries anything that failed. The
+second launches the actual Qt application; `--fresh` keeps its config and queue in
+a temp directory so a local run cannot overwrite the credentials of a real agent
+installed on the same machine.
+
+Both need the agent's Python dependencies (`pip install -r requirements.txt`), and
+a compatibility run leaves a new `devices` row behind each time — registration is
+non-idempotent by design.
+
+## Uploads
+
+**Both applications must share one uploads directory.** Laravel resolves
+`public_path('uploads')`; the legacy app writes `server/public/uploads`; and the
+paths already stored in `organizations.logo_path` and `screenshots.file_path` point
+at whatever the legacy app wrote. With two directories, the Laravel dashboard shows
+no logo and no historical screenshots, and neither app can see what the other
+stored. On this machine `public/uploads` is a directory junction:
+
+```text
+mklink /J C:\wamp64\www\deskpulsev2\public\uploads C:\wamp64\www\deskpulsev2\server\public\uploads
+```
+
+Both paths are gitignored, so a fresh clone starts with neither and needs the link
+(or a copy of the uploads tree) before screenshots and logos resolve. At cutover
+the tree moves under the Laravel `public/` for real — see `api-contract.md` §9.
+
 ## Migrations
 
 The 37 migrations in `database/migrations/` were **generated from the live database**,

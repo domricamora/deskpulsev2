@@ -136,3 +136,65 @@ jobs:
 
       - name: Run the unmodified agent harness
         run: python tools/test_webhook.py http://127.0.0.1:8000 ava@demo.test Demo12345
+
+  agent-compatibility:
+    name: The real agent runs against Laravel
+    runs-on: ubuntu-latest
+
+    # The Phase 8 gate. test_webhook.py above re-implements the contract; this
+    # imports the agent's OWN modules and lets them drive — WebhookClient signs
+    # every request, Tracker builds every payload, and the agent's offline queue
+    # reports anything that silently failed.
+    #
+    # Xvfb because the tracker's input listeners (pynput) and screen capture
+    # (mss) both need a display. Without it the harness still runs, but skips
+    # the tracked-session section, which is the half worth having.
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: deskpulse_test
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: ctype, curl, dom, fileinfo, filter, gd, iconv, intl, mbstring, openssl, pdo, pdo_mysql, tokenizer, xml, zip
+          coverage: none
+
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+
+      - name: Install dependencies
+        run: |
+          composer install --prefer-dist --no-interaction --no-progress
+          sudo apt-get update && sudo apt-get install -y xvfb libxkbcommon0
+          python -m pip install --upgrade pip
+          # The agent's runtime deps, minus PySide6 — the harness drives the
+          # client and tracker, not the Qt windows.
+          pip install requests pynput mss Pillow psutil pygetwindow
+
+      - name: Boot the application
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan migrate --force
+          php artisan db:seed --force
+          php artisan serve --host=127.0.0.1 --port=8000 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/up > /dev/null && break
+            sleep 2
+          done
+
+      - name: Run the agent's own modules against it
+        run: xvfb-run -a python tools/test_agent_compat.py http://127.0.0.1:8000 ava@demo.test Demo12345

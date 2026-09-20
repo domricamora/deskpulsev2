@@ -16,6 +16,21 @@ window events → idle → screenshot. The migration plan §59 requires it to ke
 **unmodified** against Laravel. That makes it the single best early signal that the
 agent contract survived, and it should be the first green light in Phase 7.
 
+Its blind spot is that it re-implements the contract: it proves the server accepts *a*
+correct client, not *the* client that is installed on people's machines. Phase 8 added
+`tools/test_agent_compat.py` for that, which imports the agent's own modules and lets
+them drive — `WebhookClient` signs, `Tracker` builds the payloads, and the agent's
+offline queue reports what silently failed (`api-contract.md` §9):
+
+```
+py tools/test_agent_compat.py http://localhost/deskpulsev2/public ava@demo.test Demo12345
+py tools/run_agent_local.py   http://localhost/deskpulsev2/public --fresh   # the real GUI
+```
+
+Both run in CI as `legacy-webhook-contract` and `agent-compatibility`. The second needs
+`xvfb-run` — the tracker's input listeners and screen capture want a display, and without
+one it skips the tracked-session half without failing.
+
 There is no PHPUnit, no Pest, no CI test job. Everything else has been manual:
 
 - Route smoke tests as each of the seven roles (HTTP status + PHP-diagnostic scan).
@@ -178,7 +193,7 @@ Phase 2 should add one running Pest on MySQL, plus a job running
 | 4 Models | tenant isolation across transitive tables |
 | 5 Auth | four gates, capability matrix, OIDC nonce/audience |
 | 7 Agent API | `tools/test_webhook.py` **unmodified**, green |
-| 8 Compatibility | the real agent tracks a full session against Laravel |
+| 8 Compatibility | the real agent tracks a full session against Laravel — `tools/test_agent_compat.py`, green, empty offline queue |
 | 9 Monitoring | overtime day-boundary tests; replay behaviour asserted |
 | 11 Reports | golden master matches the legacy system |
 | 12 Billing | golden master; no labor cost reaches a `client_viewer` |

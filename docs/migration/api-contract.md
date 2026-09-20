@@ -315,6 +315,75 @@ change in `WebhookController::screenshot()`.
 `/webhooks/remote/*` (Phase 16) and `/webhooks/wise` (Phase 12, a payment
 provider callback on RSA-SHA256 rather than device HMAC, currently 410 Gone).
 
+## 9. Phase 8 as built — the real agent against Laravel
+
+Phase 7's gate, `tools/test_webhook.py`, re-implements the HMAC contract. Passing
+it proves the server accepts *a* correct client, not that it accepts *the* client
+that is installed on people's machines. Phase 8 closes that gap with
+`tools/test_agent_compat.py`, which imports the agent's own modules and lets them
+drive: `WebhookClient` signs and sends every request, `Tracker` builds every
+payload, and the agent's disk-backed offline queue is what reports whether
+anything silently failed.
+
+Nothing under `agent/` was modified. Two things are injected from outside it: the
+config directory (`APPDATA` / `XDG_CONFIG_HOME` → a temp dir, so a developer's
+real credentials are never touched) and `config.SERVER_URL`, which the agent
+**hard-locks to production** — it ignores any `server_url` in an on-disk config,
+deliberately, so a tampered config cannot redirect a worker's monitoring data.
+That lock is the only reason a launcher has to exist at all.
+
+30 checks, all green against a full local dataset:
+
+| Agent code path | What the run covers |
+|---|---|
+| `LoginWindow._submit` | registration returns an int `device_id`, 64 hex `secret`, `user.name` |
+| `DeskPulseApp._start` | `/me` — the 401-vs-transient distinction that decides sign-out |
+| `MainWindow._load_branding` | org name, logo URL fetched and decodable, `work_start`/`work_end`/`work_days` |
+| `MainWindow._load_clients` / `_load_tasks` | every row carries the keys the combos index directly |
+| `Tracker._apply_policy` | all seven policy keys, each the type the tracker casts |
+| `Tracker.start` → `stop` | a real session: samples, window events, process snapshots, a real WebP screenshot, final totals |
+| `WebhookClient._enqueue_or_send` | an offline send queues rather than vanishing, and replays on reconnect |
+| `RemoteController._run` | `/webhooks/remote/poll` 404s **as JSON**, so the poller backs off instead of crashing |
+
+The queue is the strongest of these. `post_activity`, `post_windows`, `post_idle`
+and `stop_session` all swallow failures into it by design, so a run that ends with
+an empty queue is the agent itself reporting that nothing failed.
+
+The Qt application was then run against the same server with
+`tools/run_agent_local.py`. It authenticated, titled itself *DeskPulse — DeskPulse
+Demo Co*, rendered the organization's logo, populated both pickers and sat idle
+with the remote poller failing quietly in the background.
+
+### The one break it found
+
+**The Laravel app and the legacy app had separate uploads roots.** `Uploads::path()`
+resolves `public_path('uploads')` — `deskpulsev2/public/uploads` — while every file
+the legacy app has ever written, and every path already recorded in
+`organizations.logo_path` and `screenshots.file_path`, lives under
+`deskpulsev2/server/public/uploads`.
+
+The agent surfaced it first: `GET /uploads/logos/demo-oNXROiL4.png` returned a 404
+HTML page, so the agent window lost its branding. The same split silently broke
+every screenshot thumbnail on `/app/overview` and the sidebar logo — the agent was
+just the only client that *checked*.
+
+The code is right; the files were in the other copy's directory. The two roots are
+now one shared directory, so both apps read and write the same files while they
+run side by side. **At cutover this becomes a real move**: the uploads tree has to
+land under the Laravel `public/` that becomes the document root, before the legacy
+`server/` directory goes away. D4 moves screenshots off this path to a private disk
+in Phase 9; logos stay public and keep this URL shape.
+
+### Confirmed, not fixed
+
+- `/webhooks/remote/poll` 404s until Phase 16. The poller treats it as an outage
+  and backs off to a 15s retry, the UI stays responsive, and Laravel writes **no
+  log line** per failed poll — an agent fleet cannot fill the disk with them.
+- Deleting a task nulls `sessions.task_id` (`sessions_ibfk_3`, `ON DELETE SET
+  NULL`). Legacy behaviour, unchanged.
+- Registration is still non-idempotent, so every compatibility run leaves one more
+  `devices` row. Same as the Phase 7 harness.
+
 ## 7. Migration risks
 
 | Risk | Severity | Note |
