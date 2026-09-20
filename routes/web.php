@@ -18,6 +18,7 @@ use App\Http\Controllers\Dashboard\LeaveController;
 use App\Http\Controllers\Dashboard\LiveController;
 use App\Http\Controllers\Dashboard\OverviewController;
 use App\Http\Controllers\Dashboard\PayrollController;
+use App\Http\Controllers\Dashboard\PayslipController;
 use App\Http\Controllers\Dashboard\SalaryRunController;
 use App\Http\Controllers\Dashboard\ScreenshotController;
 use App\Http\Controllers\Dashboard\SessionController;
@@ -211,6 +212,17 @@ Route::middleware(['auth', 'password.changed', 'tenant'])->group(function () {
         Route::middleware('cap:pay_adjustments')->group(function () {
             Route::get('/app/adjustments', [AdjustmentController::class, 'show'])->name('adjustments');
             Route::post('/app/adjustments', [AdjustmentController::class, 'update']);
+        });
+
+        // Staff only: a client portal login is a customer, not an employee.
+        // The PDF gate is "yours, or anybody's with payroll", checked in the
+        // handler because "your own" is not a capability.
+        Route::get('/app/payslip', [PayslipController::class, 'mine'])->name('payslip');
+        Route::get('/app/payslip.pdf', [PayslipController::class, 'pdf'])->name('payslip.pdf');
+
+        Route::middleware('cap:payroll')->group(function () {
+            Route::get('/app/payslips', [PayslipController::class, 'index'])->name('payslips');
+            Route::post('/app/payslips', [PayslipController::class, 'generate']);
         });
 
         // Where each employee's money is sent, and the batch file that sends
