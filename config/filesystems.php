@@ -38,6 +38,26 @@ return [
             'report' => false,
         ],
 
+        /*
+         * Monitoring media — screenshots today, remote-control frames in
+         * Phase 16. Never served by the web server: every file here goes out
+         * through a controller that checks who is asking, because the legacy
+         * app kept these under the docroot where any URL holder could read
+         * them across tenants. See docs/migration/screenshots.md §4 and
+         * decisions D4 / D5.
+         *
+         * `serve` is off, and there is deliberately no `url` key — calling
+         * Storage::url() on this disk should fail rather than quietly hand back
+         * a public path.
+         */
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

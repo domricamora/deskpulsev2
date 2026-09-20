@@ -5,6 +5,8 @@ namespace App\View\Composers;
 use App\Enums\Capability;
 use App\Models\Organization;
 use App\Models\WorkSession;
+use App\Services\Agent\SessionIngest;
+use App\Services\Reporting\Overtime;
 use App\Support\Navigation;
 use App\Support\Visibility;
 use Illuminate\View\View;
@@ -22,8 +24,8 @@ use Illuminate\View\View;
  * | Legacy call | Where it lives now |
  * |---|---|
  * | `require_approved_org()` | `EnsureOrganizationApproved` middleware (Phase 5) |
- * | `close_stale_sessions()` | Phase 9 — needs the monitoring pipeline |
- * | `recompute_pending_overtime()` | Phase 9 — same |
+ * | `close_stale_sessions()` | `maintenance()` below (Phase 9) |
+ * | `recompute_pending_overtime()` | `maintenance()` below (Phase 9) |
  * | onboarding / welcome redirects | Deferred with their pages; see below |
  * | `mail_maybe_flush()` | Phase 14 — the queue drain belongs with the mailer |
  * | `notices_for_user()` | With the messaging pages |
@@ -36,6 +38,11 @@ use Illuminate\View\View;
  */
 class NavigationComposer
 {
+    public function __construct(
+        private readonly SessionIngest $sessions,
+        private readonly Overtime $overtime,
+    ) {}
+
     public function compose(View $view): void
     {
         $user = auth()->user();
@@ -58,6 +65,8 @@ class NavigationComposer
             return;
         }
 
+        $this->maintenance();
+
         $organizationId = $user->effectiveOrgId();
 
         $view->with([
@@ -70,6 +79,28 @@ class NavigationComposer
             'actingOrg'   => $this->actingOrganizationName($user),
             'orgLogo'     => $this->logoUrl($organizationId),
         ]);
+    }
+
+    /**
+     * The per-request maintenance pass nav_context() performs (Phase 9).
+     *
+     * Both of these are cheap no-ops on a healthy system — one indexed UPDATE
+     * that matches nothing, and one grouped SELECT that returns no rows — and
+     * running them here is what the legacy does on every dashboard render.
+     *
+     * Order matters. Closing stale sessions first is what turns a crashed
+     * agent's session into a closed one, and only closed sessions have their
+     * overtime split. Recomputing first would leave that session's overtime
+     * uncounted until the next page view, and the sidebar badge counts it.
+     *
+     * Why here rather than in the scheduler: decision D11. `ended_at` lands
+     * when somebody looks, and moving it to cron changes recorded hours for any
+     * organization that does not.
+     */
+    private function maintenance(): void
+    {
+        $this->sessions->closeStale();
+        $this->overtime->recomputePending();
     }
 
     /**

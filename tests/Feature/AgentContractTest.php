@@ -18,10 +18,12 @@ use App\Models\Client;
 use App\Models\Device;
 use App\Models\Task;
 use App\Models\WorkSession;
+use App\Services\Agent\ScreenshotIngest;
 use App\Support\PlanLimits;
 use App\Support\Uploads;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
@@ -280,6 +282,8 @@ test('window and process fields are truncated to their column widths', function 
 /* ── Screenshots ─────────────────────────────────────────────────────────── */
 
 test('a screenshot is stored from the raw request body', function () {
+    Storage::fake('private');
+
     [, $user, $device] = agentFixture();
     $session = openSession($user->id);
 
@@ -294,19 +298,24 @@ test('a screenshot is stored from the raw request body', function () {
     )->assertOk()->json('screenshot_id');
 
     $row = DB::table('screenshots')->where('id', $id)->first();
-    $path = Uploads::path($row->file_path);
+    $disk = ScreenshotIngest::disk();
+    $path = ScreenshotIngest::diskPath($row->file_path);
 
     expect((int) $row->blurred)->toBe(1)
+        // The stored path shape is unchanged by decision D4 — rows in the live
+        // database already hold it. Only the root moved.
         ->and($row->file_path)->toStartWith($user->id . '/' . $session->id . '/')
         ->and($row->file_path)->toEndWith('.png')
-        ->and(is_file($path))->toBeTrue()
+        ->and($disk->exists($path))->toBeTrue()
         // Byte-identical: the body is the image, never a multipart part.
-        ->and(file_get_contents($path))->toBe($png);
-
-    @unlink($path);
+        ->and($disk->get($path))->toBe($png)
+        // And nowhere the web server would serve it from.
+        ->and(is_file(Uploads::path($row->file_path)))->toBeFalse();
 });
 
 test('blurred is truthy for exactly three spellings', function () {
+    Storage::fake('private');
+
     [, $user, $device] = agentFixture();
     $session = openSession($user->id);
 
@@ -321,8 +330,6 @@ test('blurred is truthy for exactly three spellings', function () {
         $row = DB::table('screenshots')->where('id', $id)->first();
 
         expect((int) $row->blurred)->toBe($expected, "blurred={$sent}");
-
-        @unlink(Uploads::path($row->file_path));
     }
 });
 

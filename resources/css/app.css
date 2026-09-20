@@ -706,6 +706,9 @@ dl.kv dd{margin:0;font-size:.9rem}
 
     /* overview.php: the out-of-hours notice, tight under the details grid */
     .out-of-schedule { margin: 0.8rem 0 0; }
+
+    /* screenshots.php: the member/day filter row above the grid (Phase 9) */
+    .filter-form { margin-bottom: 1rem; }
 }
 
 /* ─────────────────── Public shell, forms and auth (Phase 5) ───────────────────

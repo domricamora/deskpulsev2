@@ -225,11 +225,16 @@ test('the overtime badge is separate from the approvals badge', function () {
     $tenant = org();
     $worker = member($tenant, UserRole::Member);
 
+    // overtime_computed = 1 because that is what a real row carries: the split
+    // is written by recompute_overtime(), which marks the row done. Without it
+    // the Phase 9 maintenance pass on every dashboard render picks the session
+    // up as uncomputed, finds this worker has no schedule, and correctly
+    // resets the overtime to zero — taking the badge with it.
     WorkSession::create([
         'user_id' => $worker->id, 'started_at' => '2026-09-01 09:00:00',
         'ended_at' => '2026-09-01 19:00:00', 'active_s' => 36000, 'inactive_s' => 0,
         'source' => 'agent', 'approval_status' => 'approved',
-        'overtime_s' => 7200, 'overtime_status' => 'pending',
+        'overtime_s' => 7200, 'overtime_status' => 'pending', 'overtime_computed' => 1,
     ]);
 
     // A team manager holds approve_time but NOT approve_overtime.

@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\PendingController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Dashboard\ClientController;
 use App\Http\Controllers\Dashboard\OverviewController;
+use App\Http\Controllers\Dashboard\ScreenshotController;
 use App\Http\Controllers\Dashboard\TaskController;
 use App\Http\Controllers\Dashboard\TeamController;
 use Illuminate\Http\Request;
@@ -141,5 +142,20 @@ Route::middleware(['auth', 'password.changed', 'tenant'])->group(function () {
             Route::get('/app/clients', [ClientController::class, 'show'])->name('clients');
             Route::post('/app/clients', [ClientController::class, 'update']);
         });
+
+        /* ── Monitoring (Phase 9) ────────────────────────────────────────── */
+
+        // The gallery needs the capability; an individual image deliberately
+        // does not. /app/overview shows recent screenshots to a member and to
+        // an HR manager, neither of whom may open this page, so the image route
+        // authorizes on VISIBILITY instead — see ScreenshotController.
+        Route::middleware('cap:screenshots')->group(function () {
+            Route::get('/app/screenshots', [ScreenshotController::class, 'index'])
+                ->name('screenshots');
+        });
+
+        Route::get('/app/screenshots/{id}/image', [ScreenshotController::class, 'image'])
+            ->whereNumber('id')
+            ->name('screenshots.image');
     });
 });

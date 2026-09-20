@@ -166,7 +166,7 @@ None of these can be settled from the code; each changes output or behaviour.
 | # | Decision | Needed before | Default recommendation |
 |---|---|---|---|
 | D1 | ~~Money: keep `double` or convert?~~ | Phase 3 | **DECIDED 2026-09-20 — keep `double`.** Migrate columns as-is so Phase 11 golden-master can prove parity; convert later as a separate approved change (`database.md` §3) |
-| D2 | **Overtime day-bucketing: server-local (current) or `report_tz`?** | Phase 9 | Replicate server-local; fix later with both clocks together (`monitoring.md` §4) |
+| D2 | ~~Overtime day-bucketing: server-local or `report_tz`?~~ | Phase 9 | **DECIDED 2026-09-20 — replicate server-local.** Settled by the standing exact-replica constraint: `report_tz` is the better clock, but switching silently restates historical overtime, and overtime is what gets paid. Correct it later as its own approved change (`monitoring.md` §4) |
 | D3 | **Offline replay: duplicate (current) or dedup?** | Phase 9 | Replicate duplication; dedup deviates and changes history (`agent-protocol.md` §5) |
 | D4 | ~~Screenshots: public URLs or private disk?~~ | Phase 9 | **DECIDED 2026-09-20 — move to private disk + authorized route.** Images render as now; only the URL shape changes, so existing deep links stop resolving (`screenshots.md` §4) |
 | D5 | ~~Remote frames: same question, worse exposure~~ | Phase 16 | **DECIDED 2026-09-20 — move to private disk + authorized route**, and delete the frame when the session ends (`remote-control.md` §5) |
@@ -175,15 +175,17 @@ None of these can be settled from the code; each changes output or behaviour.
 | D8 | **`DpPdf`: port or replace?** | Phase 13 | Port, or accept a signed-off visual diff (`payroll.md` §4) |
 | D9 | **Arbitrary SQL upload: keep, gate, or drop?** | Phase 17 | Drop once `artisan migrate` exists (`platform.md` §5) |
 | D10 | **Reset: add transaction + confirmation phrase?** | Phase 17 | Yes — no tenant-visible change (`platform.md` §5) |
-| D11 | **`close_stale_sessions()`: keep on the live poll or schedule it?** | Phase 10 | Keep on the poll; scheduling changes `ended_at` (`monitoring.md` §3) |
-| D12 | **Screenshot retention: opportunistic or scheduled?** | Phase 9 | Schedule — privacy-positive, but state it (`screenshots.md` §5) |
+| D11 | ~~`close_stale_sessions()`: keep on the live poll or schedule it?~~ | Phase 10 | **DECIDED 2026-09-20 — kept on the render.** Runs from `NavigationComposer::maintenance()`, where `nav_context()` called it. Scheduling closes sessions earlier for any org that never opens the dashboard, changing their hours (`monitoring.md` §3) |
+| D12 | ~~Screenshot retention: opportunistic or scheduled?~~ | Phase 9 | **DECIDED 2026-09-20 — both.** `screenshots:prune` nightly, and the 1-in-50 purge on upload kept, because shared hosting gives no guarantee `schedule:run` is wired up (`screenshots.md` §5) |
 | D13 | **CSP: drop `unsafe-inline` after Tailwind?** | Phase 18 | Yes, as a separate verified pass (`security.md` §3.3) |
 | D14 | **Audit log: build it (plan §32) or keep the derived view?** | Phase 17 | Replica ⇒ derived view. Building it is new scope (`database.md` §5) |
 | D15 | ~~Legacy `v1:` ciphertext: port `dp_decrypt()` or re-enter secrets?~~ | Phase 5 | **DECIDED 2026-09-20 — ported.** `App\Support\LegacyCipher` reads and writes the same `v1:` envelope, so existing ciphertext keeps opening and a rollback to the legacy app still works. Needed earlier than Phase 21: enterprise SSO cannot resolve a client secret without it (`security.md` §4) |
 | D16 | ~~Schema: normalise to Laravel conventions now or later?~~ | Phase 4 | **DECIDED 2026-09-20 — later.** Keep the production schema untouched for the whole migration; the model layer absorbs all seven breaks. Normalise, and update the code to match, as one approved pass after Phase 21 (`database.md` §7a) |
 
-**D1, D4, D5, D6, D15 and D16 are settled** (2026-09-20). The remainder are still
-open; D2 is the next one needed, before Phase 9.
+**D1, D2, D4, D5, D6, D11, D12, D15 and D16 are settled** (2026-09-20). Seven remain
+open — D3, D7, D8, D9, D10, D13, D14 — and the next one needed is **D3 (offline
+replay: duplicate or dedup)**, which Phase 9 did not have to answer because the
+replay path is ingest, already built in Phase 7.
 
 ## 6. Highest-risk items overall
 

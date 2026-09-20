@@ -140,8 +140,22 @@ mklink /J C:\wamp64\www\deskpulsev2\public\uploads C:\wamp64\www\deskpulsev2\ser
 ```
 
 Both paths are gitignored, so a fresh clone starts with neither and needs the link
-(or a copy of the uploads tree) before screenshots and logos resolve. At cutover
-the tree moves under the Laravel `public/` for real — see `api-contract.md` §9.
+(or a copy of the uploads tree) before logos resolve. At cutover the tree moves
+under the Laravel `public/` for real — see `api-contract.md` §9.
+
+**Screenshots are no longer part of that tree.** Phase 9 moved them to the
+`private` disk under `storage/app/private/screenshots/`, served only through
+`/app/screenshots/{id}/image` after a visibility check. Any environment carrying
+data written before Phase 9 needs the files moved once:
+
+```bash
+php artisan screenshots:relocate --dry-run   # report only
+php artisan screenshots:relocate
+```
+
+It is idempotent, and it also counts image files left under the public tree with
+no screenshot row — leftovers from re-seeds, still readable by URL. It deletes
+none of them; clear those by hand.
 
 ## Migrations
 

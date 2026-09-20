@@ -205,8 +205,11 @@
             @if (count($recentShots))
                 <div class="shot-grid sm">
                     @foreach ($recentShots as $shot)
-                        <a href="{{ url('/uploads/' . $shot->file_path) }}" target="_blank">
-                            <img src="{{ url('/uploads/' . $shot->file_path) }}" alt="screenshot" loading="lazy">
+                        {{-- Authorized by visibility, not by capability: this panel
+                             shows to a member and to an HR manager, neither of whom
+                             may open /app/screenshots. See decision D4. --}}
+                        <a href="{{ route('screenshots.image', $shot->id) }}" target="_blank">
+                            <img src="{{ route('screenshots.image', $shot->id) }}" alt="screenshot" loading="lazy">
                         </a>
                     @endforeach
                 </div>

@@ -87,9 +87,17 @@ A crashed or disconnected agent leaves an open session forever, so:
   stale sessions stay open until someone does.
 - A reconnecting agent also closes its own stale sessions in `POST /webhooks/session`.
 
-> Laravel could move this to the scheduler, which would be more correct. That changes
-> when `ended_at` lands for orgs that never open the live view, and therefore changes
-> reported hours. Treat as a deliberate decision, not a cleanup.
+> **Settled in Phase 9 (decision D11): kept on the render, not scheduled.**
+> `SessionIngest::closeStale()` runs from `NavigationComposer::maintenance()`,
+> which is where `nav_context()` called it, so `ended_at` still lands when
+> somebody looks. Scheduling it would close sessions earlier for any
+> organization that never opens the dashboard — a change to their recorded
+> hours wearing a cleanup's clothes.
+>
+> `recompute_pending_overtime()` runs in the same pass, immediately after.
+> Order matters: closing a crashed agent's session is what makes it eligible
+> for an overtime split, so recomputing first would leave that session's
+> overtime uncounted until the next page view — and the sidebar badge counts it.
 
 ## 4. Overtime — computed at ingest, gated by HR
 
@@ -135,10 +143,19 @@ Consequences for the migration:
 - Getting this wrong silently moves sessions between days near midnight, changing
   overtime, and therefore changing pay.
 
-> **Decision required before Phase 9.** Either (a) reproduce server-local bucketing
-> exactly, or (b) correct it to `report_tz` — which is the right answer but changes
-> historical overtime and pay figures. Golden-master tests (Phase 11) must be run
-> against whichever is chosen. Tracked in `migration-map.md`.
+> **Settled at Phase 9 by the standing constraint (decision D2): reproduce
+> server-local bucketing.** "The same exact replica … nothing else changes"
+> answers this directly — `report_tz` is the better clock, but moving to it
+> silently restates historical overtime, and overtime is what gets paid.
+>
+> Nothing new was written for this. Phase 6 ported `within_work_schedule()` and
+> Phase 7 ported `recompute_overtime()` with the same approximation on purpose,
+> and Phase 9 only calls them. All three still move together or not at all.
+>
+> **Correcting it remains worth doing, as its own approved change with the pay
+> figures re-run and signed off** — not as a line inside a migration phase.
+> Golden-master tests (Phase 11) will pin the current behaviour, which is what
+> makes that later change measurable.
 
 ## 5. Activity, windows, processes, idle
 

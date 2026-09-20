@@ -252,8 +252,8 @@ column, because `set_pay_rate` and `view_rates` are held by different roles.
 
 | Legacy call | Lands in |
 |---|---|
-| `close_stale_sessions()` | Phase 9 — needs the monitoring pipeline |
-| `recompute_pending_overtime()` | Phase 9 — same, and blocked on decision D2 |
+| `close_stale_sessions()` | Built in Phase 9 — `NavigationComposer::maintenance()` |
+| `recompute_pending_overtime()` | Built in Phase 9 — same pass, immediately after |
 | onboarding redirect (`client_admin`, `manager`) | With `/app/onboarding` |
 | welcome redirect (everyone else) | With `/app/welcome` |
 | `mail_maybe_flush()` | Phase 14, with the mailer |

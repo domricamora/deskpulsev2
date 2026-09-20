@@ -263,7 +263,7 @@ class SessionStats
         $markers = [];
 
         foreach (DB::table('screenshots')
-            ->select('session_id', 'ts', 'file_path')
+            ->select('id', 'session_id', 'ts', 'file_path')
             ->whereIn('session_id', $sessionIds)
             ->orderBy('ts')
             ->get() as $shot) {
@@ -284,9 +284,9 @@ class SessionStats
 
             $markers[] = [
                 'x'     => $at,
-                // Decision D4 moves screenshots to a private disk in Phase 9;
-                // this is the legacy public path until it does.
-                'url'   => url('/uploads/' . $shot->file_path),
+                // Served through the authorizing route, not as a public file
+                // (decision D4, taken in Phase 9).
+                'url'   => route('screenshots.image', $shot->id),
                 'app'   => $app,
                 'title' => $title,
                 'who'   => $names[$userBySession[$shot->session_id] ?? null] ?? '',

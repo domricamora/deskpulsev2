@@ -84,6 +84,36 @@ class SessionIngest
     }
 
     /**
+     * Close every session whose heartbeat has gone quiet, everywhere.
+     *
+     * Ports close_stale_sessions(). This is the crash case rather than the
+     * reconnect case above: an agent that was killed, slept or lost its network
+     * never sends the closing PATCH, so without this the session stays open
+     * forever and the live view keeps showing someone who left hours ago.
+     *
+     * It closes at the LAST HEARTBEAT, never at "now" — a machine that crashed
+     * at lunch must not bank the afternoon.
+     *
+     * There is deliberately no scheduler entry (decision D11). The legacy calls
+     * this on every dashboard render and every live poll, so `ended_at` lands
+     * when somebody looks. Moving it to cron would close sessions earlier for
+     * organizations that never open the dashboard, which changes their reported
+     * hours — a data change dressed as a cleanup.
+     */
+    public function closeStale(?int $minutes = null): void
+    {
+        $minutes = max(1, $minutes ?? (int) config('deskpulse.monitoring.stale_session_min', 15));
+
+        WorkSession::query()
+            ->whereNull('ended_at')
+            ->whereRaw(
+                'COALESCE(last_seen_at, started_at) < (UTC_TIMESTAMP() - INTERVAL ? MINUTE)',
+                [$minutes]
+            )
+            ->update(['ended_at' => DB::raw('COALESCE(last_seen_at, started_at)')]);
+    }
+
+    /**
      * Close a session with its final totals, then split the activity into
      * regular and overtime.
      *

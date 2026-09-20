@@ -91,14 +91,45 @@ data the product holds.
 
 The migration plan §24 already mandates the fix: private disk + authorized controller.
 
-> **Recommendation — take this in Phase 9.** Screenshots move to
-> `storage/app/private/screenshots/{org}/{user}/{date}/` and are served through an
-> authorized controller. Visible behaviour is unchanged (images still render on the
-> page); only the URL shape changes, so existing deep links stop resolving.
->
-> This is the one place where "nothing else changes" and "do not regress security"
-> genuinely conflict, so it needs the user's explicit call. **Org logos can stay
-> public** — they are not sensitive and are also served to the agent.
+> **DONE in Phase 9 (decision D4).** Screenshots are on a private disk and are
+> served through `ScreenshotController::image()`. Visible behaviour is
+> unchanged — images still render everywhere they used to — and only the URL
+> shape changed, so existing deep links stop resolving. **Org logos stayed
+> public**: they are not sensitive and are also served to the agent.
+
+### As built
+
+| | |
+|---|---|
+| Stored at | `storage/app/private/screenshots/{user_id}/{session_id}/{16 hex}.{ext}` |
+| Disk | `private` in `config/filesystems.php`, `serve => false` and **no `url` key**, so `Storage::url()` fails rather than quietly returning a public path |
+| Served by | `GET /app/screenshots/{id}/image` |
+| Existing files | `php artisan screenshots:relocate` moves them, idempotently |
+
+The relative path inside `screenshots.file_path` is **unchanged**. Only the root
+moved, because rows already in the live database hold that path and rewriting
+them at cutover would be a second migration with nothing to gain.
+
+The two gates are deliberately different, and getting this wrong blanks a panel
+or opens a hole:
+
+- **The gallery** requires the `screenshots` capability, exactly as
+  `require_cap('screenshots')` does. An HR manager is refused.
+- **An image** requires only that the viewer can see the person in it
+  (`Visibility::userIds()`). It must **not** require the capability, because
+  `/app/overview` loads `$recentShots` with no capability check at all — so a
+  member, who holds nothing, and an HR manager, who is refused the gallery, both
+  see screenshots there. Requiring the capability on the image route would empty
+  those panels, which is a visible change this migration is not making.
+
+A screenshot outside the viewer's scope answers **404, not 403** — a 403 confirms
+the id exists, which is the kind of leak this route was built to close.
+
+> **Cutover note.** `screenshots:relocate` also counts image files under the
+> public uploads tree that have **no** screenshot row — leftovers from deleted
+> rows and re-seeds, still world-readable by URL. It reports them and deletes
+> nothing, because it cannot tell a forgotten screenshot from a file somebody
+> put there on purpose. Clear them by hand as part of the cutover.
 
 ## 5. Retention
 
@@ -115,18 +146,24 @@ purge_old_screenshots(int $limit = 500)
   There is no cron. Retention therefore depends on upload volume — a quiet org's
   screenshots persist past the window until enough uploads occur.
 
-> Laravel should move this to the scheduler. That is a behaviour change (retention
-> becomes timely rather than volume-driven) but strictly in the privacy-positive
-> direction and consistent with the stated policy. Flag it; do not do it silently.
+> **DONE in Phase 9 (decision D12).** `screenshots:prune` runs nightly at 03:20.
+> This is a behaviour change, stated rather than slipped in: retention becomes
+> timely instead of volume-driven, so a quiet organization's images now go when
+> the window says rather than whenever somebody happens to upload enough.
+>
+> The opportunistic 1-in-50 purge on upload is **kept as well**. It costs
+> nothing, and on shared hosting — which is what production is — there is no
+> guarantee anyone has wired up `schedule:run`.
 
 ## 6. Laravel destination
 
 | Current | Laravel |
 |---|---|
-| `wh_screenshot()` | `ScreenshotIngestService` |
-| `public/uploads/...` | `Storage::disk('private')` + `ScreenshotController@show` (§4) |
-| `dash_screenshots()` | `ScreenshotController@index` + policy |
-| `purge_old_screenshots()` | `PruneScreenshots` scheduled command |
+| `wh_screenshot()` | `ScreenshotIngest::store()` |
+| `public/uploads/...` | `private` disk + `ScreenshotController::image()` (§4) |
+| `dash_screenshots()` | `ScreenshotController::index()` + `cap:screenshots` |
+| `purge_old_screenshots()` | `ScreenshotIngest::purge()`, on upload **and** `screenshots:prune` nightly |
+| — | `screenshots:relocate`, the one-time move off the docroot |
 | agent-side blur | unchanged — no server processing |
 
 Keep the raw-body upload. Do not introduce multipart, resizing, re-encoding or
