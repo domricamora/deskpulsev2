@@ -100,6 +100,20 @@ class CsvExport
     }
 
     /**
+     * Any pre-built grid of rows, streamed as a download.
+     *
+     * The escape hatch for reports whose shape is their own — billing stacks
+     * two tables with a blank line between them, and payroll's salary run is
+     * shaped by the pay cycle rather than by a fixed column set.
+     *
+     * @param  list<list<mixed>>  $rows
+     */
+    public function rows(string $filename, array $rows): StreamedResponse
+    {
+        return $this->stream($filename, [], $rows);
+    }
+
+    /**
      * @param  list<list<mixed>>  $headerRows
      * @param  list<list<mixed>>  $rows
      */

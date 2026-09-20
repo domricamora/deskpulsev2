@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\PendingController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Dashboard\ApprovalController;
+use App\Http\Controllers\Dashboard\BillingController;
 use App\Http\Controllers\Dashboard\ClientController;
 use App\Http\Controllers\Dashboard\EfficiencyController;
 use App\Http\Controllers\Dashboard\LiveController;
@@ -189,6 +190,17 @@ Route::middleware(['auth', 'password.changed', 'tenant'])->group(function () {
         Route::middleware('cap:live')->group(function () {
             Route::get('/app/live', [LiveController::class, 'index'])->name('live');
             Route::get('/app/live/data', [LiveController::class, 'data'])->name('live.data');
+        });
+
+        /* ── Billing (Phase 12) ──────────────────────────────────────────── */
+
+        // What clients are charged — never what workers cost. A client portal
+        // holds this capability and is locked to its own record by
+        // Visibility::clientFilter(), so one route serves the agency's whole
+        // book and a customer's single invoice.
+        Route::middleware('cap:billing')->group(function () {
+            Route::get('/app/billing', [BillingController::class, 'show'])->name('billing');
+            Route::get('/app/billing.csv', [BillingController::class, 'export']);
         });
 
         /* ── Monitoring (Phase 9) ────────────────────────────────────────── */

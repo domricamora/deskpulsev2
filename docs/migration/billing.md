@@ -81,10 +81,12 @@ The migration plan §82 rule 17 forbids floats for money, but the current system
 end to end. Converting to integer cents or `decimal` **changes output** at the cent
 level and breaks golden-master comparison.
 
-> **Decision required before Phase 12.** Recommendation: port the arithmetic as-is so
-> Phase 11 can prove parity, then convert under test with explicit approval. If
-> converting, `BillingCalculator` should take and return minor units and round once, at
-> the end — not per line.
+> **Settled by decision D1: the arithmetic is ported as-is, floats and all.**
+> `users.bill_rate` stays `double` and every multiplication happens in PHP floats,
+> exactly as it does today. Converting to minor units changes output at the cent level
+> and would make a golden-master comparison meaningless — it is a separate, approved
+> change for after Phase 21, and if it happens `ClientBilling` should take and return
+> minor units and round once at the end, not per line.
 
 ## 5. Laravel destination
 
@@ -118,6 +120,36 @@ Per the migration plan §60 — hourly, monthly, proration, per-user, per-client
   or CSV.
 - A viewer without `view_rates` receives no cost data server-side.
 - Golden master: totals match the legacy system on identical fixture data.
+
+## 6a. Phase 12 as built
+
+`App\Services\Billing\ClientBilling` ports `compute_billing()`;
+`ContractBilling` ports `compute_contract_billing()`; `BillingController`
+serves `/app/billing` and `/app/billing.csv` behind `cap:billing`.
+
+Every assertion in §6 is a test in `tests/Feature/BillingTest.php`, including
+the three that are easy to get subtly wrong:
+
+- **A client-filtered monthly fee divides by the agent's TOTAL time**, not by
+  the filtered slice, so two clients sharing one monthly agent are charged 25%
+  and 75% of the fee rather than 100% each.
+- **Unapproved overtime is billed and is not paid.** The same session yields
+  `amount = 20.00` from billing and `creditableActiveSeconds() = 3600` for
+  payroll, and the test asserts both at once so nobody can "fix" one without
+  seeing the other.
+- **Proration anchors on the start month** and caps at 1.0 — a quarter-long
+  window still charges exactly one flat fee.
+
+There is no labor-cost field anywhere in the response, the view or the CSV, so
+there is nothing for a `client_viewer` to be shown by accident. That is
+stronger than hiding it in Blade, which is what the plan §23 asks for.
+
+### One Blade note, again
+
+A view composer binds its variables to the LAYOUT, not to the child view's
+section body. `$navUser` is available inside `layouts.app` and undefined inside
+`@section('content')` — so anything the body branches on (here: whether the
+viewer is a platform operator) is passed from the controller instead.
 
 ## 7. Migration risks
 
