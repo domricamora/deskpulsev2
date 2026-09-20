@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\OAuthController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\PendingController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\ShareController;
 use App\Http\Controllers\Dashboard\AdjustmentController;
 use App\Http\Controllers\Dashboard\AgentController;
 use App\Http\Controllers\Dashboard\AgentDetailController;
@@ -25,6 +26,7 @@ use App\Http\Controllers\Dashboard\PayrollController;
 use App\Http\Controllers\Dashboard\PayslipController;
 use App\Http\Controllers\Dashboard\SalaryRunController;
 use App\Http\Controllers\Dashboard\ScreenshotController;
+use App\Http\Controllers\Dashboard\ShareLinkController;
 use App\Http\Controllers\Dashboard\SessionController;
 use App\Http\Controllers\Dashboard\TaskController;
 use App\Http\Controllers\Dashboard\TimesheetController;
@@ -84,6 +86,16 @@ Route::get('/auth/{provider}', [OAuthController::class, 'start'])
     ->where('provider', '[a-z][a-z0-9_-]*');
 Route::get('/auth/{provider}/callback', [OAuthController::class, 'callback'])
     ->where('provider', '[a-z][a-z0-9_-]*');
+
+/* ── Public share pages (Phase 14) ───────────────────────────────────────── */
+
+// No auth by design: the token IS the credential. Rate limited because the
+// route is unauthenticated and enumerable, but generously — a client
+// refreshing their dashboard must not be locked out.
+Route::middleware('throttle:60,1')
+    ->get('/share/{token}', [ShareController::class, 'show'])
+    ->where('token', '[A-Za-z0-9_-]+')
+    ->name('share');
 
 /* ── Dashboard ───────────────────────────────────────────────────────────── */
 
@@ -158,6 +170,12 @@ Route::middleware(['auth', 'password.changed', 'tenant'])->group(function () {
         Route::middleware('cap:clients_manage')->group(function () {
             Route::get('/app/clients', [ClientController::class, 'show'])->name('clients');
             Route::post('/app/clients', [ClientController::class, 'update']);
+        });
+
+        // Admin-only directory. Everybody HAS a personal link; this is where
+        // somebody with organization scope finds them all.
+        Route::middleware('cap:view_all')->group(function () {
+            Route::get('/app/share-links', [ShareLinkController::class, 'show'])->name('share-links');
         });
 
         // Narrower than clients_manage on purpose: HR staffs a contract
