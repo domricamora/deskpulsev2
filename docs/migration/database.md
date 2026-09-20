@@ -213,12 +213,32 @@ the port to work. The right-hand column is the checklist for the later pass.
 | # | Convention | What this schema does | Absorbed today by | The later change touches |
 |---|---|---|---|---|
 | C1 | `created_at` + `updated_at` on every table | 1 table has both (`wise_accounts`), 22 have `created_at` only, 14 have neither | `const UPDATED_AT = null` / `$timestamps = false` per model | 36 `ALTER TABLE`s, backfill, then delete those two lines from 36 models |
-| C2 | Password column is `password` | `users.password_hash` | `User::getAuthPassword()` | Rename the column; drop the override; re-check every raw query that names it |
+| C2 | Password column is `password` | `users.password_hash` | `User::getAuthPassword()` **and** `User::getAuthPasswordName()` | Rename the column; drop both overrides; re-check every raw query that names it |
 | C3 | A `remember_token` column exists | No such column — the legacy app has no "remember me" | `User::getRememberTokenName()` returns `null` | Add the column; drop the override; only then may login offer "remember me" |
 | C4 | Foreign key is `<singular table>_id` | `org_id` on 20 tables (Laravel: `organization_id`) | Explicit `$foreignKey` on every relation | Rename 20 columns + their FKs and indexes; touch every relation, scope and raw query |
 | C5 | Primary keys are `bigint unsigned` | All 37 are **signed `int`** | `integer($col, true, false)` in the migrations | 37 PKs + every FK referencing them, in dependency order, on a locked table |
 | C6 | Money is `decimal` | 11 `double` columns across 5 tables | Casts, and decision D1 | See D1 — same change, do it in the same pass |
 | C7 | No table name collides with a framework table | `sessions` is DeskPulse's time entries, not HTTP sessions | `WorkSession` model + `SESSION_DRIVER=file` | Renaming it would break the agent's stored ids; the model name is probably the permanent answer |
+
+**C2 needs two overrides, not one.** `getAuthPassword()` covers reading the hash
+and is the obvious one. Writing it goes through `getAuthPasswordName()`, whose
+default is `'password'` — a column this schema does not have. Anything that
+writes a hash back then fails with `Unknown column 'password'`: rehash-on-login
+(Laravel's default) and the password broker both do.
+
+It does not reproduce against test fixtures. A hash is rehashed only when its
+cost differs from the configured one, and a fixture built with `bcrypt()`
+already carries the configured cost. Every row in the real database was written
+by the legacy `password_hash($p, PASSWORD_DEFAULT)` at cost 10 against an
+application configured for 12 — so this was a 500 on the first sign-in of every
+existing account, with a green suite. It was found by signing in as a seeded
+demo user, not by a test.
+
+`config/hashing.php` ships with `rehash_on_login => false`, because the legacy
+`handle_login()` only calls `password_verify()` and never rewrites the stored
+hash. `AuthFlowTest` exercises the flag ON as well, so switching it stays a
+one-line decision.
+
 
 Two consequences worth stating plainly:
 
