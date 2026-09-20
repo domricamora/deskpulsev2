@@ -134,6 +134,47 @@ class Period
     }
 
     /**
+     * The VIEWER's timezone, from the `dp_tz` cookie. Ports user_tz().
+     *
+     * This is the third clock (`reports.md` §1) and the only place it is used
+     * for anything but display: a person filling in a manual timesheet entry
+     * types their own wall-clock, not the organization's and not UTC. An
+     * unknown or absent value falls back to UTC rather than to the server's
+     * timezone — a wrong guess here silently shifts somebody's hours.
+     */
+    public static function viewerTimezone(Request $request): string
+    {
+        $tz = (string) $request->cookie('dp_tz', '');
+
+        return in_array($tz, timezone_identifiers_list(), true) ? $tz : 'UTC';
+    }
+
+    /**
+     * A submitted datetime as UTC 'Y-m-d H:i:s' for storage. Ports utc_store().
+     *
+     * The browser sends both a UTC value it computed and the raw
+     * `datetime-local` string. The UTC one is preferred by the caller; this
+     * handles the fallback, interpreting a bare local string in the viewer's
+     * own timezone. An empty value means now.
+     */
+    public static function submittedToUtc(string $submitted, string $viewerTimezone = 'UTC'): string
+    {
+        $submitted = trim($submitted);
+
+        if ($submitted === '') {
+            return gmdate('Y-m-d H:i:s');
+        }
+
+        try {
+            return (new DateTimeImmutable($submitted, new DateTimeZone($viewerTimezone)))
+                ->setTimezone(new DateTimeZone('UTC'))
+                ->format('Y-m-d H:i:s');
+        } catch (\Exception) {
+            return gmdate('Y-m-d H:i:s', strtotime($submitted) ?: time());
+        }
+    }
+
+    /**
      * Shift a Y-m-d date by N days.
      *
      * Anchored at midday so a DST transition can never move the result onto the

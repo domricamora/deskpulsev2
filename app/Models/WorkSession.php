@@ -133,6 +133,37 @@ class WorkSession extends Model
     }
 
     /**
+     * Total tracked seconds. Ports session_total_s().
+     *
+     * Falls back to the elapsed span when both counters are zero, which is how
+     * an imported or hand-entered row — one that carries a start and an end but
+     * no activity breakdown — still shows a duration rather than a blank.
+     */
+    public function totalSeconds(): int
+    {
+        $total = (int) $this->active_s + (int) $this->inactive_s;
+
+        if ($total > 0) {
+            return $total;
+        }
+
+        if ($this->ended_at === null) {
+            return 0;
+        }
+
+        return max(0, strtotime((string) $this->getRawOriginal('ended_at') . ' UTC')
+            - strtotime((string) $this->getRawOriginal('started_at') . ' UTC'));
+    }
+
+    /** Share of tracked time that was active. Ports session_activity_pct(). */
+    public function activityPercent(): int
+    {
+        $total = $this->totalSeconds();
+
+        return $total ? (int) round(100 * (int) $this->active_s / $total) : 0;
+    }
+
+    /**
      * Seconds that may actually be paid.
      *
      * Unapproved overtime never pays. Mirrors creditable_active_s() in the legacy

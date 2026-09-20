@@ -8,11 +8,15 @@ use App\Http\Controllers\Auth\OAuthController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\PendingController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Dashboard\ApprovalController;
 use App\Http\Controllers\Dashboard\ClientController;
+use App\Http\Controllers\Dashboard\EfficiencyController;
 use App\Http\Controllers\Dashboard\LiveController;
 use App\Http\Controllers\Dashboard\OverviewController;
 use App\Http\Controllers\Dashboard\ScreenshotController;
+use App\Http\Controllers\Dashboard\SessionController;
 use App\Http\Controllers\Dashboard\TaskController;
+use App\Http\Controllers\Dashboard\TimesheetController;
 use App\Http\Controllers\Dashboard\TeamController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -142,6 +146,41 @@ Route::middleware(['auth', 'password.changed', 'tenant'])->group(function () {
         Route::middleware('cap:clients_manage')->group(function () {
             Route::get('/app/clients', [ClientController::class, 'show'])->name('clients');
             Route::post('/app/clients', [ClientController::class, 'update']);
+        });
+
+        /* ── Time and reports (Phase 11) ─────────────────────────────────── */
+
+        // Login only, scoped by Visibility. Timesheets is the one page that
+        // shows pending and rejected entries — it is where you look to find out
+        // what happened to one you filed.
+        Route::get('/app/timesheets', [TimesheetController::class, 'show'])->name('timesheets');
+        Route::post('/app/timesheets', [TimesheetController::class, 'store']);
+        Route::get('/app/export.csv', [TimesheetController::class, 'export'])->name('export.csv');
+
+        // Ownership is checked in the handler, not here: "anyone whose scope
+        // includes this session's owner" is not a capability.
+        Route::get('/app/session/{id}', [SessionController::class, 'show'])
+            ->whereNumber('id')
+            ->name('session');
+
+        // Two queues, two different holders. approve_time decides whether a
+        // manual entry counts; approve_overtime decides whether the premium
+        // gets paid. A team manager holds the first and not the second.
+        Route::middleware('cap:approve_time')->group(function () {
+            Route::get('/app/approvals', [ApprovalController::class, 'time'])->name('approvals');
+            Route::post('/app/approvals/{id}', [ApprovalController::class, 'decideTime'])->whereNumber('id');
+        });
+
+        Route::middleware('cap:approve_overtime')->group(function () {
+            Route::get('/app/overtime', [ApprovalController::class, 'overtime'])->name('overtime');
+            Route::post('/app/overtime/{id}', [ApprovalController::class, 'decideOvertime'])->whereNumber('id');
+        });
+
+        // The only /app/reports/* route there has ever been. §51 describes a
+        // bare /app/reports; it does not exist.
+        Route::middleware('cap:reports')->group(function () {
+            Route::get('/app/reports/efficiency', [EfficiencyController::class, 'show'])->name('efficiency');
+            Route::get('/app/reports/efficiency.csv', [EfficiencyController::class, 'export']);
         });
 
         // The live board, and the JSON it polls every 15 seconds. The data

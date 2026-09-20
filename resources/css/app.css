@@ -1114,3 +1114,8 @@ dl.kv dd{margin:0;font-size:.9rem}
         font-size: 0.88rem;
     }
 }
+
+@layer components {
+    /* timesheets.php: the Add more / Submit row under the entry form (Phase 11) */
+    .adj-actions { margin-top: 0.6rem; }
+}

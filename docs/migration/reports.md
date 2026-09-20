@@ -17,12 +17,15 @@ not reintroduced.
 > *"Never compare a naive local date against a stored UTC datetime; use
 > `local_to_utc()` / `utc_to_local_date()`."* — the production system notes
 
-Two places deviate and must be treated deliberately:
+**They no longer disagree.** This page used to warn that `recompute_overtime()`
+bucketed by server-local wall-clock while `compute_pay_run()` used `report_tz`, and
+that the two must not be silently unified. Decision D2 unified them deliberately, with
+the pay figures restated by `overtime:recompute` — see `monitoring.md` §4. Everything
+that cuts a day now cuts it in the organization's `report_tz`.
 
-- `recompute_overtime()` buckets days by **server-local wall-clock** (`monitoring.md` §4).
-- `compute_pay_run()` buckets days by **`report_tz`** (`payroll.md` §1).
-
-They can disagree for sessions near midnight. Do not silently unify them.
+`Period::viewerTimezone()` is the only place the third clock is read for anything but
+display: a manual timesheet entry is typed in the filer's own wall-clock, so it is
+converted from there, not from the organization's timezone and not from the server's.
 
 ## 2. `period_ctx()` — the single resolver
 
@@ -133,6 +136,52 @@ period rewrite fixed.
 - `sessions_for_users()` excludes pending/rejected.
 - Empty scope produces no SQL error (`[0]` sentinel).
 - Golden master vs. the legacy system on identical fixtures.
+
+## 8a. Phase 11 as built
+
+| Route | Controller | Gate |
+|---|---|---|
+| `/app/timesheets` (GET POST) | `TimesheetController` | login, scoped |
+| `/app/export.csv` | `TimesheetController::export()` | login, scoped |
+| `/app/session/{id}` | `SessionController` | login, ownership in the handler |
+| `/app/approvals` (+POST) | `ApprovalController::time()` | `approve_time` |
+| `/app/overtime` (+POST) | `ApprovalController::overtime()` | `approve_overtime` |
+| `/app/reports/efficiency` (+`.csv`) | `EfficiencyController` | `reports`, client portal redirected |
+
+The period engine was already built in Phase 6 (`App\Support\Period`), so this phase
+is the pages on top of it.
+
+### Decisions visible in the code
+
+- **A member's entry lands `pending`; a manager's lands `approved`.** The person whose
+  hours they are cannot wave them through — that asymmetry is the reason the approval
+  queue exists, and the `user_id` a member posts is ignored outright.
+- **Scope is re-checked when deciding, not just when listing.** The id arrives in a
+  URL; a reviewer must not be able to sign off a row outside their team by typing one.
+  Both actions 404 rather than 403, which is the same choice the screenshot route makes.
+- **Timesheets is the one page that shows pending and rejected rows.** Everything else
+  reads approved sessions only. It is where you go to find out what happened to an
+  entry you filed, so hiding the rejected ones would be hiding the answer.
+- **`null` effectiveness is not `0%`.** Somebody with neither tracked time nor tasks —
+  every admin, HR and IT role — is not being measured, and the organization average
+  skips them. The page says "no data" and the CSV says "n/a".
+- **Exports format their own numbers.** `Format::hms()` and `money()` join with a
+  non-breaking space so figures cannot wrap on screen; in a CSV that turns every number
+  into text. There is a test asserting no U+00A0 reaches an export.
+- **Filenames carry the resolved period** (regression 2), and the efficiency CSV and
+  page resolve their window through one private method so they cannot disagree.
+
+### Batched, not per row
+
+`client_name()` and `task_name()` are per-call queries behind a static cache, and the
+legacy's session CSV runs one client lookup per row. Timesheets, both queues and the
+export each resolve their names in a single `whereIn` instead.
+
+### One Blade note
+
+`@json()` cannot parse an array literal containing quoted strings — `@json(['Active',
+'Inactive'])` is a compile error. Such arrays are hoisted into an `@php` block first.
+It cost a 500 on the efficiency page before the smoke test caught it.
 
 ## 9. Migration risks
 
