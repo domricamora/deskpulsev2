@@ -13,6 +13,7 @@ use App\Http\Controllers\Dashboard\ApprovalController;
 use App\Http\Controllers\Dashboard\BillingController;
 use App\Http\Controllers\Dashboard\ClientController;
 use App\Http\Controllers\Dashboard\EfficiencyController;
+use App\Http\Controllers\Dashboard\ImportController;
 use App\Http\Controllers\Dashboard\LeaveController;
 use App\Http\Controllers\Dashboard\LiveController;
 use App\Http\Controllers\Dashboard\OverviewController;
@@ -209,6 +210,17 @@ Route::middleware(['auth', 'password.changed', 'tenant'])->group(function () {
             Route::get('/app/adjustments', [AdjustmentController::class, 'show'])->name('adjustments');
             Route::post('/app/adjustments', [AdjustmentController::class, 'update']);
         });
+
+        // Ingests into the uploader's OWN organization, so there is no org
+        // picker and nothing to get wrong about the destination.
+        Route::middleware('cap:data_import')->group(function () {
+            Route::get('/app/import', [ImportController::class, 'show'])->name('import');
+            Route::post('/app/import', [ImportController::class, 'update']);
+        });
+
+        // Login only: the template is a blank file of column headers, not data.
+        Route::get('/app/import/template/{key}', [ImportController::class, 'template'])
+            ->where('key', '[a-z_]+');
 
         // Staff only, and requesting needs NO capability — anyone may ask for
         // their own time off. leave_approve is what decides somebody else's.

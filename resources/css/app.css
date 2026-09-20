@@ -1132,3 +1132,10 @@ dl.kv dd{margin:0;font-size:.9rem}
     /* leave.php: the inline review-note input beside approve/reject (Phase 13) */
     .note-input { width: 190px; }
 }
+
+@layer components {
+    /* import.php: three inline styles the port replaced (Phase 13) */
+    .normal { font-weight: 400; }
+    .confirm-row { margin-top: 1rem; }
+    .lnk.spaced { margin-left: 0.75rem; }
+}
