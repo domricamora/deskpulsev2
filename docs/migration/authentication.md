@@ -194,6 +194,36 @@ login — so all four gates in §2 apply equally to SSO users.
 - `user_identities` matches on `subject`, not email.
 - `super_admin` cannot register a device.
 
+## 11. Phase 5 as built — deviations and deferrals
+
+Three places where the port does NOT reproduce the legacy behaviour exactly.
+Each is deliberate; nothing else in this document changed.
+
+| # | Legacy | Ported | Why |
+|---|---|---|---|
+| A | `?next=` accepts any value starting with `/`, including `//evil.example` | `Access::internalPath()` also rejects a leading `//` or `/\` | `url()` prefixes `$BASE_PATH`, which is empty at a domain root, so `Location: //evil.example` is a working open redirect there. No legitimate `next` value is affected |
+| B | `require_approved_org()` reads `($org['status'] ?? 'approved')` and then passes the same null row into `sub_is_current(array $org)` | Both gates fall through when the organization is missing | The legacy pair is a fatal, not a decision. `users.org_id` is a foreign key, so it is unreachable either way |
+| C | The reset email goes out through `mail_send_row()`, which picks PHP `mail()` or SMTP from config | Queued to `email_outbox`, then sent through Laravel's mailer | Transport selection is Phase 14. The observable behaviour — a durable row, sent synchronously, status recorded — is identical |
+
+**One required test is deferred**, not dropped: *`super_admin` cannot register a
+device* belongs to `POST /webhooks/auth`, which is Phase 7. It is listed in §9
+because the property is authentication; the endpoint that enforces it does not
+exist yet.
+
+### What Phase 5 registers
+
+| Route | Gate |
+|---|---|
+| `/login`, `/register`, `/forgot-password`, `/reset-password` | public |
+| `/logout` | exempt from gates 2 and 4 |
+| `/auth/{provider}`, `/auth/{provider}/callback` | public |
+| `/app/pending`, `/app/change-password` | gates 1, 2 only — they are where gates 3 and 4 send people |
+| `/app/platform/act/{id}`, `/app/platform/return` | gates 1, 2 + `super` — outside 3 and 4, so an operator can open a pending or lapsed tenant |
+| `/app` | all four gates |
+
+Middleware aliases: `password.changed`, `org.approved`, `subscription.current`,
+`tenant`, `cap:<capability>`, `super`, `staff`.
+
 ## 10. Migration risks
 
 | Risk | Severity | Note |

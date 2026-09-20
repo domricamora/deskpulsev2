@@ -35,13 +35,35 @@ class User extends Authenticatable
 
     protected $hidden = [
         'password_hash',
-        'remember_token',
     ];
+
+    /**
+     * The acting organization, while a super admin is viewing a tenant.
+     *
+     * Deliberately a plain property and not an attribute: the legacy
+     * current_user() overwrites `$user['org_id']` in the array it returns, which
+     * has no equivalent here that a later save() could not persist. Nothing may
+     * ever write an acting org id to the database.
+     */
+    protected ?int $actingOrgId = null;
 
     /** The legacy column is `password_hash`, not Laravel's `password`. */
     public function getAuthPassword(): string
     {
         return $this->password_hash;
+    }
+
+    /**
+     * This schema has no `remember_token` column, and the legacy app has no
+     * "remember me" — the session cookie's lifetime is 0.
+     *
+     * Returning null switches Laravel's remember-token handling off entirely.
+     * Without it, a login passing $remember would UPDATE an unknown column and
+     * every sign-in would fail. See docs/migration/database.md §7a C3.
+     */
+    public function getRememberTokenName(): ?string
+    {
+        return null;
     }
 
     protected function casts(): array
@@ -63,6 +85,49 @@ class User extends Authenticatable
             'weekly_hours_cap'     => 'decimal:2',
             'period_hours_cap'     => 'decimal:2',
         ];
+    }
+
+    /* ── Acting organization (super admin act-as) ────────────────────────── */
+
+    /**
+     * View the app as a tenant. Ports the $_SESSION['act_org'] override in
+     * current_user().
+     *
+     * The caller must have validated that the organization exists — the
+     * middleware does, exactly as the legacy code does, so a forged act_org for
+     * a non-existent org is ignored rather than producing an empty tenant.
+     */
+    public function actAs(?int $organizationId): void
+    {
+        $this->actingOrgId = $organizationId;
+    }
+
+    public function isActingAsOrganization(): bool
+    {
+        return $this->actingOrgId !== null;
+    }
+
+    /**
+     * The organization this request is scoped to.
+     *
+     * Every org-scoped query must use this rather than `org_id`, or a super
+     * admin's act-as will silently show the platform organization instead of
+     * the tenant they opened.
+     */
+    public function effectiveOrgId(): int
+    {
+        return $this->actingOrgId ?? (int) $this->org_id;
+    }
+
+    /**
+     * The organization row this request is scoped to.
+     *
+     * Note `organization()` (from BelongsToOrganization) is the relation to the
+     * user's OWN org and ignores act-as. The two are different on purpose.
+     */
+    public function effectiveOrganization(): ?Organization
+    {
+        return Organization::find($this->effectiveOrgId());
     }
 
     /* ── Authorization ───────────────────────────────────────────────────── */

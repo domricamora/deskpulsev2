@@ -179,10 +179,11 @@ None of these can be settled from the code; each changes output or behaviour.
 | D12 | **Screenshot retention: opportunistic or scheduled?** | Phase 9 | Schedule — privacy-positive, but state it (`screenshots.md` §5) |
 | D13 | **CSP: drop `unsafe-inline` after Tailwind?** | Phase 18 | Yes, as a separate verified pass (`security.md` §3.3) |
 | D14 | **Audit log: build it (plan §32) or keep the derived view?** | Phase 17 | Replica ⇒ derived view. Building it is new scope (`database.md` §5) |
-| D15 | **Legacy `v1:` ciphertext: port `dp_decrypt()` or re-enter secrets?** | Phase 21 | Port the reader; re-entering is the fallback (`security.md` §4) |
+| D15 | ~~Legacy `v1:` ciphertext: port `dp_decrypt()` or re-enter secrets?~~ | Phase 5 | **DECIDED 2026-09-20 — ported.** `App\Support\LegacyCipher` reads and writes the same `v1:` envelope, so existing ciphertext keeps opening and a rollback to the legacy app still works. Needed earlier than Phase 21: enterprise SSO cannot resolve a client secret without it (`security.md` §4) |
+| D16 | ~~Schema: normalise to Laravel conventions now or later?~~ | Phase 4 | **DECIDED 2026-09-20 — later.** Keep the production schema untouched for the whole migration; the model layer absorbs all seven breaks. Normalise, and update the code to match, as one approved pass after Phase 21 (`database.md` §7a) |
 
-**D1, D4, D5 and D6 are settled** (2026-09-20). The remainder are still open; D2 is the
-next one needed, before Phase 9.
+**D1, D4, D5, D6, D15 and D16 are settled** (2026-09-20). The remainder are still
+open; D2 is the next one needed, before Phase 9.
 
 ## 6. Highest-risk items overall
 

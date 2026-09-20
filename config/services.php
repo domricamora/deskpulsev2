@@ -35,4 +35,18 @@ return [
         ],
     ],
 
+    /*
+    | Federated sign-in (OIDC). A provider is offered on the sign-in form only
+    | when BOTH values are present — see config/deskpulse.php 'oauth'.
+    */
+    'google' => [
+        'client_id'     => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+    ],
+
+    'microsoft' => [
+        'client_id'     => env('MICROSOFT_CLIENT_ID'),
+        'client_secret' => env('MICROSOFT_CLIENT_SECRET'),
+    ],
+
 ];

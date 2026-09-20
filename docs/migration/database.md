@@ -200,6 +200,37 @@ report SQL was written against them.
 production hazard and has no Laravel equivalent. Migrations become explicit and
 versioned — one of the few places the migration should *not* replicate behaviour.
 
+## 7a. Laravel conventions this schema breaks — deferred
+
+**DECIDED 2026-09-20 (user).** The schema stays exactly as production has it for the
+whole migration. Normalising it to Laravel's conventions, and updating the code to
+match, is a separate change **after** Phase 21 cutover — never mixed into a phase whose
+job is to prove parity.
+
+Each break below is currently absorbed in the model layer, so nothing has to change for
+the port to work. The right-hand column is the checklist for the later pass.
+
+| # | Convention | What this schema does | Absorbed today by | The later change touches |
+|---|---|---|---|---|
+| C1 | `created_at` + `updated_at` on every table | 1 table has both (`wise_accounts`), 22 have `created_at` only, 14 have neither | `const UPDATED_AT = null` / `$timestamps = false` per model | 36 `ALTER TABLE`s, backfill, then delete those two lines from 36 models |
+| C2 | Password column is `password` | `users.password_hash` | `User::getAuthPassword()` | Rename the column; drop the override; re-check every raw query that names it |
+| C3 | A `remember_token` column exists | No such column — the legacy app has no "remember me" | `User::getRememberTokenName()` returns `null` | Add the column; drop the override; only then may login offer "remember me" |
+| C4 | Foreign key is `<singular table>_id` | `org_id` on 20 tables (Laravel: `organization_id`) | Explicit `$foreignKey` on every relation | Rename 20 columns + their FKs and indexes; touch every relation, scope and raw query |
+| C5 | Primary keys are `bigint unsigned` | All 37 are **signed `int`** | `integer($col, true, false)` in the migrations | 37 PKs + every FK referencing them, in dependency order, on a locked table |
+| C6 | Money is `decimal` | 11 `double` columns across 5 tables | Casts, and decision D1 | See D1 — same change, do it in the same pass |
+| C7 | No table name collides with a framework table | `sessions` is DeskPulse's time entries, not HTTP sessions | `WorkSession` model + `SESSION_DRIVER=file` | Renaming it would break the agent's stored ids; the model name is probably the permanent answer |
+
+Two consequences worth stating plainly:
+
+- **C3 is load-bearing for Phase 5.** If login is ever given a "remember me" checkbox
+  before the column exists, Laravel writes `remember_token` on a successful login and
+  every login fails on an unknown column. The `getRememberTokenName()` override makes
+  that impossible rather than merely unlikely.
+- **C5 is the expensive one.** It is 37 primary keys plus every foreign key pointing at
+  them, and it cannot be done table-by-table without dropping constraints first. It is
+  also the one with the least user-visible benefit, so it may simply never be worth
+  doing.
+
 ## 8. Required tests
 
 - Rebuild migrations into an empty database; diff `information_schema` against the
