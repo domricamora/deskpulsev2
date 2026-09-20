@@ -1139,3 +1139,8 @@ dl.kv dd{margin:0;font-size:.9rem}
     .confirm-row { margin-top: 1rem; }
     .lnk.spaced { margin-left: 0.75rem; }
 }
+
+@layer components {
+    /* agent_detail.php: the Devices heading inside the rates panel (Phase 12) */
+    .spaced-top { margin-top: 1rem; }
+}

@@ -9,9 +9,13 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\PendingController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Dashboard\AdjustmentController;
+use App\Http\Controllers\Dashboard\AgentController;
+use App\Http\Controllers\Dashboard\AgentDetailController;
+use App\Http\Controllers\Dashboard\AgentInfoController;
 use App\Http\Controllers\Dashboard\ApprovalController;
 use App\Http\Controllers\Dashboard\BillingController;
 use App\Http\Controllers\Dashboard\ClientController;
+use App\Http\Controllers\Dashboard\ContractController;
 use App\Http\Controllers\Dashboard\EfficiencyController;
 use App\Http\Controllers\Dashboard\ImportController;
 use App\Http\Controllers\Dashboard\LeaveController;
@@ -155,6 +159,28 @@ Route::middleware(['auth', 'password.changed', 'tenant'])->group(function () {
             Route::get('/app/clients', [ClientController::class, 'show'])->name('clients');
             Route::post('/app/clients', [ClientController::class, 'update']);
         });
+
+        // Narrower than clients_manage on purpose: HR staffs a contract
+        // without being able to create clients or portal logins.
+        Route::middleware('cap:contracts_manage')->group(function () {
+            Route::get('/app/contracts', [ContractController::class, 'show'])->name('contracts');
+            Route::post('/app/contracts', [ContractController::class, 'update']);
+        });
+
+        // The roster, and where a client portal lands from /app. view_agents
+        // opens it read-only; manage_agents adds the assignment control.
+        Route::middleware('cap:view_agents')->group(function () {
+            Route::get('/app/agents', [AgentController::class, 'show'])->name('agents');
+            Route::post('/app/agents', [AgentController::class, 'update']);
+            Route::get('/app/agents/{id}', [AgentDetailController::class, 'show'])
+                ->whereNumber('id')->name('agents.detail');
+        });
+
+        // SINGULAR, and JSON: the roster modal agent-modal.js fetches. Login
+        // only at the route; the real gate is view_all/view_team plus scope,
+        // checked in the handler.
+        Route::get('/app/agent/{id}', [AgentInfoController::class, 'show'])
+            ->whereNumber('id')->name('agent.info');
 
         /* ── Time and reports (Phase 11) ─────────────────────────────────── */
 
