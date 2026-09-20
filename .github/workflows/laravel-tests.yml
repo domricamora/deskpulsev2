@@ -87,8 +87,9 @@ jobs:
     # existing end-to-end harness. It must keep working UNMODIFIED against the
     # Laravel API — that is the Phase 7 gate (docs/migration/testing.md §1).
     #
-    # Skipped until the agent endpoints exist; enable in Phase 7.
-    if: false
+    # Enabled in Phase 7. The harness signs in as ava@demo.test / Demo12345,
+    # which DemoSeeder creates; those credentials are part of the gate and must
+    # not drift.
 
     services:
       mysql:

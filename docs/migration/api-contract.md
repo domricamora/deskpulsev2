@@ -251,6 +251,70 @@ Laravel specifics that will otherwise break the contract:
 - Agent session lands `source='agent'`, `approval_status='approved'`.
 - `tools/test_webhook.py` passes unmodified against Laravel.
 
+## 8. Phase 7 as built
+
+Served from `routes/agent.php`, prefixed `/webhooks`, registered through
+`withRouting(then: ...)` so it carries **no middleware group at all** — not
+`api`, whose throttling would return 429, and not `web`, which would add
+sessions and CSRF.
+
+| Legacy | Laravel |
+|---|---|
+| `verify_webhook()` | `App\Http\Middleware\VerifyAgentSignature` |
+| `wh_*()` handlers | `Agent\WebhookController` -> `App\Services\Agent\*` |
+| `json_out()` / `abort()` | `App\Support\AgentResponse` |
+| `wh_owned_session()` | `WebhookController::ownedSession()` — 404 plus heartbeat |
+| `recompute_overtime()` | `App\Services\Reporting\Overtime` |
+| `org_policy()` | `App\Services\Agent\MonitoringPolicy` |
+| `upload_path()` | `App\Support\Uploads` |
+
+Three framework behaviours are switched off for this prefix in
+`bootstrap/app.php`, each of which would otherwise break the contract silently:
+`TrimStrings`, `ConvertEmptyStringsToNull` and CSRF. Exception rendering is
+forced to JSON for `webhooks/*`, so a 404 or a method mismatch cannot reach the
+agent as an HTML page.
+
+### The gate
+
+`tools/test_webhook.py` passes **unmodified** against this implementation —
+registration, session open, activity, windows, idle, a raw-body screenshot and
+session close. The CI job that runs it (`legacy-webhook-contract`) was
+`if: false` and is now enabled; it seeds `ava@demo.test / Demo12345` via
+`DemoSeeder`, which is the account the frozen harness is invoked with.
+
+### One deviation
+
+**The screenshot plan check now works.** The legacy handler reads
+`$device['org_id']`, and `devices` has **no `org_id` column** — it reaches its
+tenant through `user_id`. So the expression is `null`, `plan_limits(0)` finds no
+organization, `solo` is false, and the 402 never fires: Solo organizations can
+upload screenshots today despite the plan excluding them.
+
+The documented intent is unambiguous — §2 above calls ingest refusal "the real
+enforcement" against a stale or modified agent, and `plan_limits()` names this
+as one of exactly three places Solo is enforced. The port resolves the
+organization through `Device::user()` so the refusal happens.
+
+No organization is currently on the `solo` plan, so nothing changes for anyone
+today. If Solo customers exist at cutover their agents begin receiving 402 on
+upload, which the agent swallows without re-queueing. Reverting is a one-line
+change in `WebhookController::screenshot()`.
+
+### Reproduced deliberately, not fixed
+
+- `devices.last_seen` still uses server-local `NOW()` while the rest of the
+  ingest path is UTC. Verified: a harness run stamped `15:17:33` against a
+  session closing at `07:17:33` UTC. Fixing it shifts every displayed last-seen.
+- Replay is still accepted. There is no nonce, timestamp or window.
+- Registration is still non-idempotent — every call creates a device row.
+- `DELETE /webhooks/tasks/{id}` still answers `{"ok":true}` for a row that is
+  not there.
+
+### Not yet built on this prefix
+
+`/webhooks/remote/*` (Phase 16) and `/webhooks/wise` (Phase 12, a payment
+provider callback on RSA-SHA256 rather than device HMAC, currently 410 Gone).
+
 ## 7. Migration risks
 
 | Risk | Severity | Note |

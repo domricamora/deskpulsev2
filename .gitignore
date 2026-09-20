@@ -24,6 +24,11 @@ server/instance/
 # Uploaded data
 screenshots/
 server/public/uploads/
+
+# Uploaded media in the Laravel app — screenshots, organization logos, remote
+# frames. Written at runtime and per-install. Decisions D4 and D5 move
+# screenshots and frames to a private disk in Phases 9 and 16.
+/public/uploads/
 server/static/screenshots/
 
 # Payroll import spreadsheets (contain employee PII — never commit)

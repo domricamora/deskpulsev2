@@ -1,0 +1,189 @@
+<?php
+
+namespace App\Services\Reporting;
+
+use App\Models\User;
+use App\Models\WorkSession;
+use Illuminate\Support\Collection;
+
+/**
+ * Splitting a closed session's active time into regular and overtime.
+ *
+ * Ports recompute_overtime(), overtime_persist() and
+ * recompute_pending_overtime() from server/src/reports.php.
+ *
+ * This runs on the INGEST path, not at report time: the agent closing a session
+ * triggers it, and the result then waits on HR (`approve_overtime`) before any
+ * of it can be paid. {@see SessionStats::creditableSeconds()} is the other half
+ * — it subtracts an unapproved overtime portion from anything that reaches
+ * payroll.
+ *
+ * ## Two rules, whichever applies
+ *
+ * 1. Active time whose wall-clock falls outside the scheduled window, or on a
+ *    day that is not a scheduled work day, is overtime.
+ * 2. Active time inside the window beyond the day's scheduled LENGTH is
+ *    overtime — so two sessions that each sit inside 09:00–17:00 can still
+ *    produce overtime between them.
+ *
+ * A worker with no schedule set has no overtime at all. Nothing can be "beyond"
+ * a schedule that does not exist, and treating an unset schedule as zero
+ * allowance would make every tracked second overtime for everyone who has not
+ * been set up yet.
+ *
+ * ## Open decision D2
+ *
+ * Days are bucketed with the stored value read as SERVER-LOCAL wall-clock,
+ * matching the legacy code and {@see \App\Support\Format::withinWorkSchedule()}.
+ * The pay run uses the organization's `report_tz` instead, so the same session
+ * can land on different days in the two. Reproduced rather than corrected,
+ * because correcting it here alone would put this out of step with the badge
+ * the same rule drives. See docs/migration/migration-map.md D2.
+ */
+class Overtime
+{
+    /**
+     * Recompute every closed session for one user, optionally from a date.
+     *
+     * $since is a UTC datetime string. Callers pass a day EARLIER than the
+     * session they care about, so the daily-allowance walk sees that whole
+     * day's sessions rather than starting mid-day with the allowance already
+     * partly spent.
+     */
+    public function recompute(int $userId, ?string $since = null): void
+    {
+        $user = User::query()
+            ->whereKey($userId)
+            ->first(['work_start', 'work_end', 'work_days']);
+
+        if (! $user) {
+            return;
+        }
+
+        $sessions = WorkSession::query()
+            ->where('user_id', $userId)
+            ->whereNotNull('ended_at')
+            ->when($since !== null, fn ($query) => $query->where('started_at', '>=', $since))
+            ->orderBy('started_at')
+            ->get();
+
+        if ($sessions->isEmpty()) {
+            return;
+        }
+
+        $start = $user->work_start;
+        $end = $user->work_end;
+        $days = array_values(array_filter(explode(',', (string) $user->work_days)));
+        $scheduleSet = $start && $end && $days;
+
+        // Grouped by day, then each day walked in order so rule 2 can track how
+        // much of the day's allowance earlier sessions already consumed.
+        $byDay = $sessions->groupBy(
+            fn (WorkSession $session) => date('Y-m-d', strtotime($session->getRawOriginal('started_at')))
+        );
+
+        foreach ($byDay as $day => $rows) {
+            $this->walkDay((string) $day, $rows, $scheduleSet, $days, (string) $start, (string) $end);
+        }
+    }
+
+    /**
+     * @param  Collection<int, WorkSession>  $rows
+     * @param  list<string>  $days
+     */
+    private function walkDay(string $day, Collection $rows, bool $scheduleSet, array $days, string $start, string $end): void
+    {
+        $dayOfWeek = (string) ((int) date('N', strtotime($day)));
+        $scheduled = $scheduleSet && in_array($dayOfWeek, $days, true);
+
+        $windowStart = $scheduled ? strtotime($day . ' ' . $start) : 0;
+        $windowEnd = $scheduled ? strtotime($day . ' ' . $end) : 0;
+
+        // The regular seconds available on this day, consumed in session order.
+        $allowance = $scheduled ? max(0, $windowEnd - $windowStart) : 0;
+        $regularUsed = 0;
+
+        foreach ($rows as $session) {
+            if (! $scheduleSet) {
+                $this->persist($session, 0);
+
+                continue;
+            }
+
+            $active = (int) $session->active_s;
+            $startedAt = strtotime($session->getRawOriginal('started_at'));
+            $endedAt = strtotime($session->getRawOriginal('ended_at'));
+            $span = max(0, $endedAt - $startedAt);
+
+            // Active seconds whose wall-clock falls inside the scheduled window.
+            // Apportioned by overlap, because the agent reports a total for the
+            // session rather than a per-second timeline.
+            if (! $scheduled) {
+                $insideActive = 0;                       // not a work day → all outside
+            } elseif ($span > 0) {
+                $overlap = max(0, min($endedAt, $windowEnd) - max($startedAt, $windowStart));
+                $insideActive = (int) round($active * $overlap / $span);
+            } else {
+                $insideActive = ($startedAt >= $windowStart && $startedAt <= $windowEnd) ? $active : 0;
+            }
+
+            $insideActive = max(0, min($active, $insideActive));
+            $outsideActive = $active - $insideActive;    // rule 1
+
+            $regularPart = min($insideActive, max(0, $allowance - $regularUsed));
+            $regularUsed += $regularPart;
+
+            $this->persist($session, $outsideActive + ($insideActive - $regularPart));
+        }
+    }
+
+    /**
+     * Write one session's overtime, preserving a decision HR has already made.
+     *
+     * An approved or rejected split keeps its status and only has its AMOUNT
+     * refreshed — otherwise a late-arriving offline batch would silently reopen
+     * something HR had already signed off.
+     */
+    private function persist(WorkSession $session, int $overtime): void
+    {
+        $overtime = max(0, $overtime);
+        $current = $session->overtime_status ?? 'none';
+
+        $status = match (true) {
+            $overtime <= 0 => 'none',
+            $current === 'approved', $current === 'rejected' => $current,
+            default => 'pending',
+        };
+
+        $session->forceFill([
+            'overtime_s'        => $overtime,
+            'overtime_status'   => $status,
+            'overtime_computed' => 1,
+        ])->save();
+    }
+
+    /**
+     * Process closed sessions whose split has not been computed — typically
+     * after a bulk stale-session close, which ends sessions without going
+     * through the agent's PATCH.
+     *
+     * A cheap no-op when nothing is outstanding.
+     */
+    public function recomputePending(): void
+    {
+        $outstanding = WorkSession::query()
+            ->selectRaw('user_id, MIN(started_at) AS since')
+            ->whereNotNull('ended_at')
+            ->where('overtime_computed', 0)
+            ->groupBy('user_id')
+            ->get();
+
+        foreach ($outstanding as $row) {
+            // A day earlier, for the allowance walk's boundary slack.
+            $this->recompute(
+                (int) $row->user_id,
+                date('Y-m-d 00:00:00', strtotime($row->since) - 86400)
+            );
+        }
+    }
+}
