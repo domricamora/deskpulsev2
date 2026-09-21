@@ -25,6 +25,7 @@ use App\Http\Controllers\Dashboard\EfficiencyController;
 use App\Http\Controllers\Dashboard\ImportController;
 use App\Http\Controllers\Dashboard\LeaveController;
 use App\Http\Controllers\Dashboard\LiveController;
+use App\Http\Controllers\Dashboard\OnboardingController;
 use App\Http\Controllers\Dashboard\OverviewController;
 use App\Http\Controllers\Dashboard\PayrollController;
 use App\Http\Controllers\Dashboard\PayslipController;
@@ -125,8 +126,10 @@ Route::middleware(['auth', 'password.changed', 'tenant'])->group(function () {
         Route::get('/app/platform/return', [ActAsController::class, 'destroy']);
     });
 
-    // Everything else in the app is behind gates 3 and 4.
-    Route::middleware(['org.approved', 'subscription.current'])->group(function () {
+    // Everything else in the app is behind gates 3 and 4, plus the first-run
+    // redirect — which runs LAST so a pending or lapsed tenant is held at its
+    // own gate rather than sent to a wizard it cannot use yet.
+    Route::middleware(['org.approved', 'subscription.current', 'firstrun'])->group(function () {
 
         /**
          * /app is a router, not a page: each role has a different home.
@@ -377,5 +380,11 @@ Route::middleware(['auth', 'password.changed', 'tenant'])->group(function () {
         // the POST writes one column, welcomed_at.
         Route::get('/app/welcome', [WelcomeController::class, 'show'])->name('welcome');
         Route::post('/app/welcome', [WelcomeController::class, 'dismiss']);
+
+        // TWO wizards behind one path: the company admin's five-step setup and
+        // the team manager's two-step roster. Everybody else is sent to their
+        // overview — their first run is the role guide above.
+        Route::get('/app/onboarding', [OnboardingController::class, 'show'])->name('onboarding');
+        Route::post('/app/onboarding', [OnboardingController::class, 'update']);
     });
 });

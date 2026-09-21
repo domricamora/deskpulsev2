@@ -399,7 +399,9 @@ test('the step is clamped into the guide rather than trusted', function () {
 });
 
 test('welcomed_at is stamped once and never restamped', function () {
-    $user = member(org(), UserRole::Member);
+    // Genuinely brand new — the helper stamps it by default so every other
+    // test is not redirected into the guide.
+    $user = member(org(), UserRole::Member, ['welcomed_at' => null]);
 
     expect($user->welcomed_at)->toBeNull();
 

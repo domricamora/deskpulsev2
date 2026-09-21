@@ -20,9 +20,19 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+/*
+ * An ESTABLISHED tenant and an established account. `onboarded_at` and
+ * `welcomed_at` are stamped so RedirectFirstRun stays out of the way: this file
+ * is about gates 1–4, and a first-run redirect would answer every assertion
+ * with the wizard rather than the gate under test.
+ */
 function makeOrg(array $attributes = []): Organization
 {
-    return Organization::create(array_merge(['name' => 'Acme', 'status' => 'approved'], $attributes));
+    return Organization::create(array_merge([
+        'name'         => 'Acme',
+        'status'       => 'approved',
+        'onboarded_at' => '2024-01-01 00:00:00',
+    ], $attributes));
 }
 
 function makeUser(Organization $org, UserRole $role = UserRole::Member, array $attributes = []): User
@@ -33,6 +43,7 @@ function makeUser(Organization $org, UserRole $role = UserRole::Member, array $a
         'email'         => $role->value . '-' . uniqid() . '@example.test',
         'password_hash' => bcrypt('correct-horse'),
         'role'          => $role,
+        'welcomed_at'   => '2024-01-01 00:00:00',
     ], $attributes));
 }
 

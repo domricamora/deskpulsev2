@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureOrganizationApproved;
 use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\EnsureSubscriptionCurrent;
+use App\Http\Middleware\RedirectFirstRun;
 use App\Http\Middleware\RequireCapability;
 use App\Http\Middleware\RequireStaff;
 use App\Http\Middleware\RequireSuperAdmin;
@@ -69,6 +70,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'password.changed'      => EnsurePasswordChanged::class,
             'org.approved'          => EnsureOrganizationApproved::class,
             'subscription.current'  => EnsureSubscriptionCurrent::class,
+
+            // First run. Middleware rather than part of the nav composer,
+            // because a composer runs during rendering and cannot redirect.
+            'firstrun'              => RedirectFirstRun::class,
 
             // Super-admin act-as. Runs before any gate that reads the
             // organization, so a super admin viewing a tenant sees that

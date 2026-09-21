@@ -50,13 +50,22 @@ expect()->extend('toBeOne', function () {
 */
 
 /**
- * A tenant. Approved by default, because that is what every gate downstream
- * expects and a test that wants a pending one says so.
+ * A tenant. Approved and already set up by default, because that is what every
+ * gate downstream expects and a test that wants a pending or brand-new one says
+ * so.
+ *
+ * `onboarded_at` matters as much as `status`: without it RedirectFirstRun sends
+ * every company admin to the setup wizard, and a test of some other page would
+ * be asserting against the wizard instead.
  */
 function org(array $attributes = []): \App\Models\Organization
 {
     return \App\Models\Organization::create(
-        array_merge(['name' => 'Tenant', 'status' => 'approved'], $attributes)
+        array_merge([
+            'name'         => 'Tenant',
+            'status'       => 'approved',
+            'onboarded_at' => '2024-01-01 00:00:00',
+        ], $attributes)
     );
 }
 
@@ -64,6 +73,11 @@ function org(array $attributes = []): \App\Models\Organization
  * Somebody in that tenant. The email is unique per call because `users.email`
  * is unique across every organization rather than within one, and several
  * tests create the same role twice.
+ *
+ * `welcomed_at` is stamped for the same reason `org()` stamps `onboarded_at`:
+ * an unwelcomed member, HR admin, IT admin or client viewer is redirected to
+ * the role guide by RedirectFirstRun, and an unwelcomed manager to the roster
+ * wizard. Pass `['welcomed_at' => null]` to test that.
  */
 function member(
     \App\Models\Organization $organization,
@@ -76,6 +90,7 @@ function member(
         'email'         => $role->value . '-' . uniqid() . '@example.test',
         'password_hash' => bcrypt('secret'),
         'role'          => $role,
+        'welcomed_at'   => '2024-01-01 00:00:00',
     ], $attributes));
 }
 

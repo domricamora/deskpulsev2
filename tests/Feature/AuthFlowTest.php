@@ -19,9 +19,19 @@ use Illuminate\Support\Facades\Schema;
 
 uses(RefreshDatabase::class);
 
+/*
+ * `onboarded_at` and `welcomed_at` are stamped for the same reason `status` is
+ * approved: these helpers stand for an ESTABLISHED tenant. Without them
+ * RedirectFirstRun sends the account to its setup wizard, and a test of gate 3
+ * or gate 4 would be asserting against the wizard instead of the gate.
+ */
 function tenant(array $attributes = []): Organization
 {
-    return Organization::create(array_merge(['name' => 'Acme', 'status' => 'approved'], $attributes));
+    return Organization::create(array_merge([
+        'name'         => 'Acme',
+        'status'       => 'approved',
+        'onboarded_at' => '2024-01-01 00:00:00',
+    ], $attributes));
 }
 
 function account(Organization $o, array $attributes = []): User
@@ -32,6 +42,7 @@ function account(Organization $o, array $attributes = []): User
         'email'         => 'owner@acme.test',
         'password_hash' => bcrypt('correct-horse'),
         'role'          => UserRole::ClientAdmin,
+        'welcomed_at'   => '2024-01-01 00:00:00',
     ], $attributes));
 }
 
