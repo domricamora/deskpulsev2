@@ -9,8 +9,7 @@ RescueTime.
   active windows, running tasks, the current task, and screenshots, syncing to the
   server over **HMAC-signed webhooks**.
 
-> Architecture, the full requirements log, and data model are documented in
-> [CLAUDE.md](CLAUDE.md).
+
 
 ## Features
 
