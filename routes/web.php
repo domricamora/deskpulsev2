@@ -19,6 +19,7 @@ use App\Http\Controllers\Dashboard\BillingController;
 use App\Http\Controllers\Dashboard\ClientController;
 use App\Http\Controllers\Dashboard\ContractController;
 use App\Http\Controllers\Dashboard\DeviceController;
+use App\Http\Controllers\Dashboard\DownloadController;
 use App\Http\Controllers\Dashboard\RemoteController as DashboardRemoteController;
 use App\Http\Controllers\Dashboard\EfficiencyController;
 use App\Http\Controllers\Dashboard\ImportController;
@@ -27,13 +28,16 @@ use App\Http\Controllers\Dashboard\LiveController;
 use App\Http\Controllers\Dashboard\OverviewController;
 use App\Http\Controllers\Dashboard\PayrollController;
 use App\Http\Controllers\Dashboard\PayslipController;
+use App\Http\Controllers\Dashboard\ProfileController;
 use App\Http\Controllers\Dashboard\SalaryRunController;
 use App\Http\Controllers\Dashboard\ScreenshotController;
 use App\Http\Controllers\Dashboard\ShareLinkController;
 use App\Http\Controllers\Dashboard\SessionController;
+use App\Http\Controllers\Dashboard\SettingsController;
 use App\Http\Controllers\Dashboard\TaskController;
 use App\Http\Controllers\Dashboard\TimesheetController;
 use App\Http\Controllers\Dashboard\TeamController;
+use App\Http\Controllers\Dashboard\WelcomeController;
 use App\Http\Controllers\Dashboard\WiseController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -352,5 +356,26 @@ Route::middleware(['auth', 'password.changed', 'tenant'])->group(function () {
         Route::get('/app/screenshots/{id}/image', [ScreenshotController::class, 'image'])
             ->whereNumber('id')
             ->name('screenshots.image');
+
+        /* ── Account (Phase 17) ──────────────────────────────────────────── */
+
+        // Login only, and branching inside: a manager is bounced home, and
+        // `org_settings` opens the four admin panels. See SettingsController.
+        Route::get('/app/settings', [SettingsController::class, 'show'])->name('settings');
+        Route::post('/app/settings', [SettingsController::class, 'update']);
+
+        // Everybody has one of these, including a client portal viewer and a
+        // platform operator.
+        Route::get('/app/profile', [ProfileController::class, 'show'])->name('profile');
+        Route::post('/app/profile', [ProfileController::class, 'update']);
+
+        // Login only on purpose: a client viewer will never install the agent,
+        // but a role branch here would protect nothing.
+        Route::get('/app/download', [DownloadController::class, 'show'])->name('download');
+
+        // The first-run role guide. Its position lives entirely in ?step=N;
+        // the POST writes one column, welcomed_at.
+        Route::get('/app/welcome', [WelcomeController::class, 'show'])->name('welcome');
+        Route::post('/app/welcome', [WelcomeController::class, 'dismiss']);
     });
 });
